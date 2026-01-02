@@ -7,3 +7,38 @@
 2026-01-02 21:40:14,048 - ERROR - 
 ERROR: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.
 2026-01-02 21:40:14,049 - ERROR - Failed at: 2026-01-02 21:40:14
+2026-01-02 21:58:43,373 - INFO - ============================================================
+2026-01-02 21:58:43,374 - INFO - DELIVERY STATUS MONITOR
+2026-01-02 21:58:43,374 - INFO - ============================================================
+2026-01-02 21:58:43,374 - INFO - Checking delivery status for orders as of 2026-01-02
+2026-01-02 21:58:43,402 - INFO - Found 5 recent orders:
+2026-01-02 21:58:43,432 - INFO -    Date Range: 2025-12-15 to 2025-12-18
+2026-01-02 21:58:43,433 - INFO - 
+Sample Orders (showing 3 of 3):
+2026-01-02 21:58:43,434 - ERROR - Error checking delivery status: unsupported operand type(s) for -: 'datetime.date' and 'str'
+2026-01-02 21:58:43,435 - INFO - Continuing with scheduled run despite delivery status check failure...
+2026-01-02 21:59:00,140 - INFO - ============================================================
+2026-01-02 21:59:00,140 - INFO - DELIVERY STATUS MONITOR
+2026-01-02 21:59:00,141 - INFO - ============================================================
+2026-01-02 21:59:00,141 - INFO - Checking delivery status for orders as of 2026-01-02
+2026-01-02 21:59:00,145 - INFO - Found 5 recent orders:
+2026-01-02 21:59:00,146 - INFO -   Delivered - Current Status: 2 orders (PHP 40,000.00)
+2026-01-02 21:59:00,147 - INFO -   In Transit - Should be Delivered: 2 orders (PHP 47,000.00)
+2026-01-02 21:59:00,148 - INFO -   Processing - Should be Delivered: 1 orders (PHP 25,000.00)
+2026-01-02 21:59:00,149 - INFO - 
+Orders Ready for Delivery (3 orders):
+2026-01-02 21:59:00,150 - INFO -    Total Value: PHP 72,000.00
+2026-01-02 21:59:00,150 - INFO -    Date Range: 2025-12-15 to 2025-12-18
+2026-01-02 21:59:00,150 - INFO - 
+Sample Orders (showing 3 of 3):
+2026-01-02 21:59:00,156 - INFO -    Order #1001: PHP 15,000.00 (18 days overdue)
+2026-01-02 21:59:00,158 - INFO -    Order #1002: PHP 25,000.00 (17 days overdue)
+2026-01-02 21:59:00,159 - INFO -    Order #1004: PHP 32,000.00 (15 days overdue)
+2026-01-02 21:59:00,162 - INFO - 
+Overall Delivery Status Summary:
+2026-01-02 21:59:00,164 - INFO -    Delivered: 2 orders (40.0%) - PHP 40,000.00
+2026-01-02 21:59:00,164 - INFO -    In Transit: 2 orders (40.0%) - PHP 47,000.00
+2026-01-02 21:59:00,165 - INFO -    Processing: 1 orders (20.0%) - PHP 25,000.00
+2026-01-02 21:59:00,165 - INFO - 
+Note: This is a read-only monitoring version.
+2026-01-02 21:59:00,165 - INFO -    To update delivery status, enable billing or use a paid BigQuery tier.
