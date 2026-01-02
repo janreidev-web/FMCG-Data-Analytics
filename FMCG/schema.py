@@ -159,7 +159,7 @@ FACT_MARKETING_COSTS_SCHEMA = [
 # Storage estimates (rough calculations)
 STORAGE_ESTIMATES = {
     "dim_products": "150 rows × ~200 bytes = ~30 KB",
-    "dim_employees": "200 rows × ~800 bytes = ~160 KB",
+    "dim_employees": "900 rows × ~800 bytes = ~720 KB",
     "dim_retailers": "500 rows × ~150 bytes = ~75 KB",
     "dim_campaigns": "50 rows × ~150 bytes = ~7.5 KB",
     "fact_sales": "3.6M rows × ~300 bytes = ~1.08 GB",

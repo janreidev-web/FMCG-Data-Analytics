@@ -17,7 +17,7 @@ from schema import (
 from auth import get_bigquery_client
 from helpers import table_has_data, append_df_bq, append_df_bq_safe, update_delivery_status
 from generators.dimensional import (
-    generate_dim_products, generate_dim_employees, generate_dim_retailers,
+    generate_dim_products, generate_dim_employees, generate_historical_employees, generate_dim_retailers,
     generate_dim_campaigns, generate_fact_sales,
     generate_fact_operating_costs, generate_fact_inventory, generate_fact_marketing_costs
 )
@@ -66,12 +66,12 @@ def main():
             logger.info("Generating products dimension...")
             products = generate_dim_products()
             append_df_bq(client, pd.DataFrame(products), DIM_PRODUCTS)
-        else:
-            logger.info("Products dimension already exists. Skipping.")
-        
-        if not table_has_data(client, DIM_EMPLOYEES):
+        # Generate employees dimension
+        logger.info("Checking if table {} has data...".format(DIM_EMPLOYEES))
+        if not client.query(f"SELECT COUNT(*) as count FROM `{DIM_EMPLOYEES}`").to_dataframe()['count'].iloc[0]:
             logger.info("Generating employees dimension...")
-            employees = generate_dim_employees()
+            # Use historical employee generation for realistic growth patterns
+            employees = generate_historical_employees(total_employees=900, current_active=250)
             append_df_bq(client, pd.DataFrame(employees), DIM_EMPLOYEES)
         else:
             logger.info("Employees dimension already exists. Skipping.")

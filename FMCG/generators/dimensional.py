@@ -125,7 +125,7 @@ def generate_dim_products(num_products=150, start_id=1):
     
     return products
 
-def generate_dim_employees(num_employees=200, start_id=1):
+def generate_dim_employees(num_employees=250, start_id=1):
     """Generate employees dimension table with realistic FMCG company structure"""
     employees = []
     
@@ -151,7 +151,7 @@ def generate_dim_employees(num_employees=200, start_id=1):
         ],
         "Finance": [
             "Accounting Staff", "Financial Analyst", "Senior Accountant",
-            "Finance Manager", "Controller", "CFO"
+            "Finance Manager", "CFO", "Finance Director"
         ],
         "Human Resources": [
             "HR Assistant", "HR Specialist", "HR Supervisor",
@@ -159,44 +159,41 @@ def generate_dim_employees(num_employees=200, start_id=1):
         ],
         "Supply Chain": [
             "Logistics Coordinator", "Supply Chain Analyst", "Warehouse Manager",
-            "Supply Chain Manager", "Logistics Director"
+            "Supply Chain Manager", "Supply Chain Director"
         ],
         "Quality Assurance": [
-            "QA Inspector", "QA Analyst", "QA Supervisor",
-            "QA Manager", "Quality Director"
+            "QA Inspector", "QA Specialist", "QA Supervisor",
+            "QA Manager", "QA Director"
         ],
         "IT": [
-            "IT Support", "Systems Administrator", "IT Analyst",
+            "IT Support", "System Administrator", "IT Specialist",
             "IT Manager", "IT Director"
         ],
         "Customer Service": [
             "Customer Service Rep", "Senior CSR", "Customer Service Supervisor",
-            "Customer Service Manager"
+            "Customer Service Manager", "Service Director"
         ],
         "Administration": [
-            "Administrative Assistant", "Executive Assistant", "Office Manager",
-            "Admin Manager"
+            "Administrative Assistant", "Office Manager", "Executive Assistant",
+            "Admin Manager", "Admin Director"
         ]
     }
     
-    # Work setup types
+    # Work setup options
     work_setups = ["On-site", "Remote", "Hybrid", "Field-based"]
     
-    # Work types
-    work_types = ["Full-time", "Part-time", "Contract", "Probationary", "Intern"]
-    
-    # Department size distribution (realistic for 200-employee FMCG company)
+    # Department distribution for ₱6B FMCG company (250 active employees)
     dept_distribution = {
-        "Sales": 0.30,      # 30% of workforce
-        "Operations": 0.25,   # 25% of workforce
-        "Marketing": 0.10,    # 10% of workforce
-        "Supply Chain": 0.08, # 8% of workforce
-        "Finance": 0.08,      # 8% of workforce
-        "Customer Service": 0.06, # 6% of workforce
-        "Quality Assurance": 0.05, # 5% of workforce
-        "Human Resources": 0.04, # 4% of workforce
-        "IT": 0.02,           # 2% of workforce
-        "Administration": 0.02  # 2% of workforce
+        "Sales": 0.24,      # 24% of workforce (60 people) - largest dept
+        "Operations": 0.28, # 28% of workforce (70 people) - production/warehouse
+        "Marketing": 0.10,  # 10% of workforce (25 people)
+        "Supply Chain": 0.12, # 12% of workforce (30 people) - logistics
+        "Customer Service": 0.08, # 8% of workforce (20 people)
+        "Finance": 0.06,    # 6% of workforce (15 people)
+        "Quality Assurance": 0.05, # 5% of workforce (12 people)
+        "Human Resources": 0.04, # 4% of workforce (10 people)
+        "IT": 0.02,         # 2% of workforce (5 people)
+        "Administration": 0.01  # 1% of workforce (3 people)
     }
     
     # Generate employees by department
@@ -418,6 +415,187 @@ def generate_dim_employees(num_employees=200, start_id=1):
             employee_id += 1
     
     return employees
+
+def generate_historical_employees(total_employees=900, current_active=250):
+    """Generate historical employee data including terminated employees for realistic growth patterns"""
+    historical_employees = []
+    
+    # Growth phases for ₱6B FMCG company over 11 years (2015-2026)
+    # Phase 1: Startup (2015-2017) - 20-50 employees
+    # Phase 2: Growth (2018-2020) - 50-150 employees  
+    # Phase 3: Expansion (2021-2023) - 150-200 employees
+    # Phase 4: Mature (2024-2026) - 200-250 employees
+    
+    # Generate current active employees first
+    current_employees = generate_dim_employees(current_active, start_id=1)
+    historical_employees.extend(current_employees)
+    
+    # Generate terminated employees (total - current = terminated)
+    terminated_count = total_employees - current_active
+    
+    # Create terminated employees with realistic hire/termination patterns
+    for i in range(terminated_count):
+        employee_id = current_active + i + 1
+        
+        # Generate gender first for name compatibility
+        gender = random.choice(["Male", "Female", "Non-binary"]) if random.random() < 0.05 else random.choice(["Male", "Female"])
+        
+        # Generate name based on gender
+        if gender == "Male":
+            first_name = fake.first_name_male()
+            last_name = fake.last_name()
+        elif gender == "Female":
+            first_name = fake.first_name_female()
+            last_name = fake.last_name()
+        else:  # Non-binary
+            first_name = fake.first_name()
+            last_name = fake.last_name()
+        
+        full_name = f"{first_name} {last_name}"
+        
+        # Additional demographic information
+        birth_date = fake.date_between_dates(date_start=date(1970, 1, 1), date_end=date(2005, 12, 31))
+        age = (date.today() - birth_date).days // 365
+        
+        # Philippine government IDs (simulated)
+        tin_number = f"TIN-{random.randint(100000000, 999999999)}"
+        sss_number = f"SSC-{random.randint(1000000000, 9999999999)}"
+        philhealth_number = f"PH-{random.randint(100000000, 999999999)}"
+        pagibig_number = f"PG-{random.randint(1000000000, 9999999999)}"
+        
+        # Blood type distribution (Philippines)
+        blood_type = random.choices(["O+", "A+", "B+", "AB+", "O-", "A-", "B-", "AB-"], weights=[0.44, 0.22, 0.11, 0.05, 0.03, 0.09, 0.04, 0.02])[0]
+        
+        # Personal email (different from work email)
+        personal_email = fake.free_email()
+        
+        # Bank account details for payroll
+        bank_name = random.choice(["BDO", "BPI", "Metrobank", "Landbank", "PNB", "UnionBank"])
+        account_number = f"{random.randint(1000, 9999)}-{random.randint(100000, 999999)}-{random.randint(10, 99)}"
+        account_name = full_name
+        
+        # Realistic hire/termination patterns based on company growth
+        # Early years (2015-2017) had higher turnover
+        phase_weights = [0.15, 0.20, 0.25, 0.20, 0.15, 0.05]  # 2015-2020 higher turnover
+        hire_year = random.choices([2015, 2016, 2017, 2018, 2019, 2020], weights=phase_weights)[0]
+        hire_date = fake.date_between_dates(date_start=date(hire_year, 1, 1), date_end=date(hire_year, 12, 31))
+        
+        # Termination date (must be after hire date and before today)
+        max_termination_year = min(2025, hire_year + 5)  # Max 5 years tenure
+        termination_date = fake.date_between_dates(date_start=hire_date, date_end=date(max_termination_year, 12, 31))
+        
+        # Department and position (simplified for terminated employees)
+        departments = ["Sales", "Operations", "Marketing", "Finance", "HR", "Supply Chain", "QA", "IT", "Customer Service", "Admin"]
+        dept = random.choice(departments)
+        
+        positions = ["Staff", "Senior Staff", "Supervisor", "Manager", "Specialist", "Coordinator", "Assistant", "Representative"]
+        position = random.choice(positions)
+        
+        # Work setup and type
+        work_setup = random.choice(["On-site", "Remote", "Hybrid", "Field-based"])
+        work_type = random.choice(["Full-time", "Part-time", "Contract", "Intern"])
+        
+        # Salary (historical rates might be lower)
+        if "Manager" in position:
+            monthly_salary = random.randint(40000, 70000)
+        elif "Senior" in position:
+            monthly_salary = random.randint(25000, 40000)
+        else:
+            monthly_salary = random.randint(15000, 30000)
+        
+        # Performance rating (terminated employees might have lower ratings)
+        performance_rating = random.choices([5, 4, 3, 2, 1], weights=[0.05, 0.20, 0.35, 0.25, 0.15])[0]
+        last_review_date = fake.date_between_dates(date_start=hire_date, date_end=termination_date)
+        
+        # Skills and training
+        skills = ["Communication", "Teamwork", "Problem Solving", "Leadership", "Technical Skills"]
+        num_skills = random.randint(2, 5)
+        skills_str = ", ".join(random.sample(skills, num_skills))
+        
+        training_courses = ["Sales Fundamentals", "Product Knowledge", "Safety Training", "Compliance"]
+        num_trainings = random.randint(0, 3)
+        training_completed_str = ", ".join(random.sample(training_courses, num_trainings)) if num_trainings > 0 else ""
+        
+        # Generate address
+        region, province, city = pick_ph_location()
+        street_address = fake.street_address()
+        postal_code = fake.postcode()
+        
+        # Contact information
+        phone = fake.phone_number()
+        email = fake.email()
+        
+        # Emergency contact
+        emergency_contact_name = fake.name()
+        emergency_contact_relation = random.choice(["Spouse", "Parent", "Sibling", "Child", "Friend"])
+        emergency_contact_phone = fake.phone_number()
+        
+        # Benefits and analytics (for terminated employees)
+        health_insurance_provider = random.choice(["PhilHealth", "Maxicare", "MediCard", "Intellicare"])
+        benefit_enrollment_date = hire_date
+        years_of_service = (termination_date - hire_date).days // 365
+        attendance_rate = random.uniform(0.80, 0.95)  # Slightly lower for terminated
+        overtime_hours_monthly = random.randint(0, 15)
+        engagement_score = random.randint(1, 7)  # Lower engagement for terminated
+        satisfaction_index = random.randint(50, 80)  # Lower satisfaction
+        
+        # Leave balances (might be unused at termination)
+        vacation_leave_balance = random.randint(0, 10)
+        sick_leave_balance = random.randint(0, 8)
+        personal_leave_balance = random.randint(0, 3)
+        
+        historical_employees.append({
+            "employee_key": employee_id,
+            "employee_id": f"E{employee_id:05}",
+            "full_name": full_name,
+            "department": dept,
+            "position": position,
+            "employment_status": "Terminated",
+            "hire_date": hire_date,
+            "termination_date": termination_date,
+            "gender": gender,
+            "birth_date": birth_date,
+            "age": age,
+            "work_setup": work_setup,
+            "work_type": work_type,
+            "monthly_salary": monthly_salary,
+            "address_street": street_address,
+            "address_city": city,
+            "address_province": province,
+            "address_region": region,
+            "address_postal_code": postal_code,
+            "address_country": "PH",
+            "phone": phone,
+            "email": email,
+            "personal_email": personal_email,
+            "tin_number": tin_number,
+            "sss_number": sss_number,
+            "philhealth_number": philhealth_number,
+            "pagibig_number": pagibig_number,
+            "blood_type": blood_type,
+            "bank_name": bank_name,
+            "account_number": account_number,
+            "account_name": account_name,
+            "performance_rating": performance_rating,
+            "last_review_date": last_review_date,
+            "training_completed": training_completed_str,
+            "skills": skills_str,
+            "health_insurance_provider": health_insurance_provider,
+            "benefit_enrollment_date": benefit_enrollment_date,
+            "years_of_service": years_of_service,
+            "attendance_rate": round(attendance_rate, 3),
+            "overtime_hours_monthly": overtime_hours_monthly,
+            "engagement_score": engagement_score,
+            "satisfaction_index": satisfaction_index,
+            "vacation_leave_balance": vacation_leave_balance,
+            "sick_leave_balance": sick_leave_balance,
+            "personal_leave_balance": personal_leave_balance,
+            "emergency_contact_name": emergency_contact_name,
+            "emergency_contact_relation": emergency_contact_relation,
+            "emergency_contact_phone": emergency_contact_phone
+        })
+    
+    return historical_employees
 
 def generate_dim_retailers(num_retailers=500, start_id=1):
     """Generate retailers dimension table with realistic Philippine retail landscape"""
