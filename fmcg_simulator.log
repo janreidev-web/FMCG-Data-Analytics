@@ -42,3 +42,5 @@ Overall Delivery Status Summary:
 2026-01-02 21:59:00,165 - INFO - 
 Note: This is a read-only monitoring version.
 2026-01-02 21:59:00,165 - INFO -    To update delivery status, enable billing or use a paid BigQuery tier.
+2026-01-03 12:43:12,264 - INFO - Test log message
+2026-01-03 12:43:27,764 - INFO - Test log message
