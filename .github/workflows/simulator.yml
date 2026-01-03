@@ -3,9 +3,9 @@ name: Daily Data Generator
 on:
   schedule:
     # Production schedule: Runs at 12 AM PHT (UTC+8) = 16:00 UTC
-    #- cron: '0 16 * * *'
+    - cron: '0 16 * * *'
     # Testing schedule: Runs every 5 minutes
-     - cron: '*/2 * * * *'
+    #- cron: '*/5 * * * *'
   workflow_dispatch:
 
 jobs:
