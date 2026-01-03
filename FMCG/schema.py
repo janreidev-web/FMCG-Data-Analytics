@@ -103,27 +103,50 @@ DIM_INSURANCE_SCHEMA = [
     {"name": "coverage_level", "type": "STRING", "mode": "REQUIRED"},  # Basic, Standard, Premium
 ]
 
-# Employee fact table - time-varying employee metrics
+# Employee fact table - time-varying employee metrics (optimized)
 FACT_EMPLOYEES_SCHEMA = [
     {"name": "employee_fact_key", "type": "INTEGER", "mode": "REQUIRED"},
     {"name": "employee_key", "type": "INTEGER", "mode": "REQUIRED"},
     {"name": "effective_date", "type": "DATE", "mode": "REQUIRED"},
+    
+    # Compensation metrics
     {"name": "monthly_salary", "type": "INTEGER", "mode": "REQUIRED"},
+    {"name": "annual_bonus", "type": "INTEGER", "mode": "NULLABLE"},
+    {"name": "total_compensation", "type": "INTEGER", "mode": "REQUIRED"},
+    
+    # Performance metrics
     {"name": "performance_rating", "type": "INTEGER", "mode": "REQUIRED"},
     {"name": "last_review_date", "type": "DATE", "mode": "REQUIRED"},
-    {"name": "training_completed", "type": "STRING", "mode": "NULLABLE"},
-    {"name": "skills", "type": "STRING", "mode": "REQUIRED"},
-    {"name": "benefit_enrollment_date", "type": "DATE", "mode": "REQUIRED"},
+    {"name": "promotion_eligible", "type": "BOOLEAN", "mode": "REQUIRED"},
+    
+    # Work metrics
     {"name": "years_of_service", "type": "INTEGER", "mode": "REQUIRED"},
     {"name": "attendance_rate", "type": "FLOAT", "mode": "REQUIRED"},
     {"name": "overtime_hours_monthly", "type": "INTEGER", "mode": "REQUIRED"},
+    {"name": "productivity_score", "type": "INTEGER", "mode": "NULLABLE"},
+    
+    # Engagement metrics
     {"name": "engagement_score", "type": "INTEGER", "mode": "REQUIRED"},
     {"name": "satisfaction_index", "type": "INTEGER", "mode": "REQUIRED"},
+    {"name": "retention_risk_score", "type": "INTEGER", "mode": "NULLABLE"},
+    
+    # Development metrics
+    {"name": "training_hours_completed", "type": "INTEGER", "mode": "REQUIRED"},
+    {"name": "certifications_count", "type": "INTEGER", "mode": "REQUIRED"},
+    {"name": "skill_gap_score", "type": "INTEGER", "mode": "NULLABLE"},
+    
+    # Benefits metrics
+    {"name": "benefit_enrollment_date", "type": "DATE", "mode": "REQUIRED"},
+    {"name": "health_utilization_rate", "type": "FLOAT", "mode": "NULLABLE"},
+    
+    # Leave metrics
     {"name": "vacation_leave_balance", "type": "INTEGER", "mode": "REQUIRED"},
     {"name": "sick_leave_balance", "type": "INTEGER", "mode": "REQUIRED"},
     {"name": "personal_leave_balance", "type": "INTEGER", "mode": "REQUIRED"},
-    {"name": "account_number", "type": "STRING", "mode": "REQUIRED"},
-    {"name": "account_name", "type": "STRING", "mode": "REQUIRED"},
+    
+    # Financial wellness
+    {"name": "salary_grade", "type": "INTEGER", "mode": "REQUIRED"},
+    {"name": "cost_center_allocation", "type": "FLOAT", "mode": "REQUIRED"},
 ]
 
 # Existing schemas (unchanged)

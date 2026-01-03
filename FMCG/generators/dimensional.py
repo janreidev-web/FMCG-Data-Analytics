@@ -334,7 +334,7 @@ def generate_dim_employees_normalized(num_employees, locations, jobs, banks, ins
     return employees
 
 def generate_fact_employees(employees, jobs, start_id=1):
-    """Generate employee fact table with time-varying metrics"""
+    """Generate optimized employee fact table with comprehensive metrics"""
     employee_facts = []
     fact_key = start_id
     
@@ -362,65 +362,87 @@ def generate_fact_employees(employees, jobs, start_id=1):
         elif job["work_type"] == "Probationary":
             base_salary = int(base_salary * 0.8)
         
-        # Performance and development data
+        # Compensation metrics
+        annual_bonus = random.randint(0, int(base_salary * 0.3)) if random.random() < 0.7 else None
+        total_compensation = base_salary * 12 + (annual_bonus or 0)
+        
+        # Performance metrics
         performance_rating = random.choices([5, 4, 3, 2, 1], weights=[0.15, 0.35, 0.30, 0.15, 0.05])[0]
         last_review_date = fake.date_between_dates(date_start=employee["hire_date"], date_end=date.today())
+        promotion_eligible = performance_rating >= 4 and random.random() < 0.6
         
-        # Training completed
-        training_courses = [
-            "Sales Fundamentals", "Product Knowledge", "Customer Service Excellence",
-            "Leadership Development", "Supply Chain Management", "Quality Control",
-            "Digital Marketing", "Financial Planning", "Safety Training", "Compliance"
-        ]
-        num_trainings = random.randint(0, 5)
-        training_completed = ", ".join(random.sample(training_courses, num_trainings)) if num_trainings > 0 else ""
-        
-        # Skills
-        skills = [
-            "Communication", "Teamwork", "Problem Solving", "Leadership",
-            "Analytical Skills", "Time Management", "Adaptability", "Technical Skills"
-        ]
-        num_skills = random.randint(3, 7)
-        employee_skills = ", ".join(random.sample(skills, num_skills))
-        
-        # Workforce analytics
+        # Work metrics
         years_of_service = (date.today() - employee["hire_date"]).days // 365
         attendance_rate = random.uniform(0.85, 0.98)
         overtime_hours_monthly = random.randint(0, 20) if job["work_type"] == "Full-time" else 0
+        productivity_score = random.randint(60, 100) if random.random() < 0.8 else None
         
-        # Engagement and satisfaction
+        # Engagement metrics
         engagement_score = random.randint(1, 10)
         satisfaction_index = random.randint(60, 95)
+        retention_risk_score = random.randint(1, 10) if satisfaction_index < 75 else None
         
-        # Leave balances
+        # Development metrics (quantified instead of strings)
+        training_hours_completed = random.randint(0, 120)
+        certifications_count = random.randint(0, 5)
+        skill_gap_score = random.randint(1, 10) if random.random() < 0.3 else None
+        
+        # Benefits metrics
+        benefit_enrollment_date = employee["hire_date"]
+        health_utilization_rate = round(random.uniform(0.1, 0.8), 3) if random.random() < 0.7 else None
+        
+        # Leave metrics
         vacation_leave_balance = random.randint(0, 15)
         sick_leave_balance = random.randint(0, 10)
         personal_leave_balance = random.randint(0, 5)
         
-        # Bank account
-        account_number = f"{random.randint(1000, 9999)}-{random.randint(100000, 999999)}-{random.randint(10, 99)}"
-        account_name = employee["full_name"]
+        # Financial wellness
+        salary_grade = (base_salary // 10000) + 1  # Simple salary grade calculation
+        cost_center_allocation = round(random.uniform(0.8, 1.2), 3)  # Multiplier for cost allocation
         
         employee_facts.append({
             "employee_fact_key": fact_key,
             "employee_key": employee["employee_key"],
             "effective_date": date.today(),
+            
+            # Compensation metrics
             "monthly_salary": base_salary,
+            "annual_bonus": annual_bonus,
+            "total_compensation": total_compensation,
+            
+            # Performance metrics
             "performance_rating": performance_rating,
             "last_review_date": last_review_date,
-            "training_completed": training_completed,
-            "skills": employee_skills,
-            "benefit_enrollment_date": employee["hire_date"],
+            "promotion_eligible": promotion_eligible,
+            
+            # Work metrics
             "years_of_service": years_of_service,
             "attendance_rate": round(attendance_rate, 3),
             "overtime_hours_monthly": overtime_hours_monthly,
+            "productivity_score": productivity_score,
+            
+            # Engagement metrics
             "engagement_score": engagement_score,
             "satisfaction_index": satisfaction_index,
+            "retention_risk_score": retention_risk_score,
+            
+            # Development metrics
+            "training_hours_completed": training_hours_completed,
+            "certifications_count": certifications_count,
+            "skill_gap_score": skill_gap_score,
+            
+            # Benefits metrics
+            "benefit_enrollment_date": benefit_enrollment_date,
+            "health_utilization_rate": health_utilization_rate,
+            
+            # Leave metrics
             "vacation_leave_balance": vacation_leave_balance,
             "sick_leave_balance": sick_leave_balance,
             "personal_leave_balance": personal_leave_balance,
-            "account_number": account_number,
-            "account_name": account_name,
+            
+            # Financial wellness
+            "salary_grade": salary_grade,
+            "cost_center_allocation": cost_center_allocation,
         })
         
         fact_key += 1
