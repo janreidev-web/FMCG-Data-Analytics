@@ -266,19 +266,24 @@ def generate_dim_employees_normalized(num_employees, locations, jobs, banks, ins
                 first_name = fake.first_name()
                 last_name = fake.last_name()
             
-            full_name = f"{first_name} {last_name}"
-            
             # Generate contact information
             phone = fake.phone_number()
             email = f"{first_name.lower()}.{last_name.lower()}{random.randint(1, 999)}@company.com"
             personal_email = fake.email()
             
             # Generate dates
-            birth_date = fake.date_between_dates(date_start=date.today() - timedelta(days=65*365), date_end=date.today() - timedelta(days=18*365))
-            hire_date = fake.date_between_dates(date_start=date(2015, 1, 1), date_end=date.today())
+            # Ensure birth date range is valid (18-65 years old)
+            min_birth_date = date.today() - timedelta(days=65*365)
+            max_birth_date = date.today() - timedelta(days=18*365)
             
-            # Calculate age
-            age = (date.today() - birth_date).days // 365
+            # Add safety check to ensure valid date range
+            if min_birth_date >= max_birth_date:
+                # Fallback to a safe range if calculation fails
+                min_birth_date = date(1960, 1, 1)
+                max_birth_date = date(2006, 1, 1)
+            
+            birth_date = fake.date_between_dates(date_start=min_birth_date, date_end=max_birth_date)
+            hire_date = fake.date_between_dates(date_start=date(2015, 1, 1), date_end=date.today())
             
             # Assign random job from department
             job = random.choice(dept_jobs) if dept_jobs else None
@@ -300,7 +305,15 @@ def generate_dim_employees_normalized(num_employees, locations, jobs, banks, ins
             # If terminated, generate termination date
             termination_date = None
             if employment_status == "Terminated":
-                termination_date = fake.date_between_dates(date_start=hire_date + timedelta(days=365), date_end=date.today())
+                # Ensure termination date is after hire date and before today
+                min_termination = hire_date + timedelta(days=365)
+                max_termination = date.today()
+                
+                if min_termination < max_termination:
+                    termination_date = fake.date_between_dates(date_start=min_termination, date_end=max_termination)
+                else:
+                    # If hire date is too recent, set termination to None (keep as Active)
+                    employment_status = "Active"
             
             # Blood type
             blood_type = random.choice(["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"])
@@ -315,10 +328,8 @@ def generate_dim_employees_normalized(num_employees, locations, jobs, banks, ins
                 "employee_id": f"EMP{employee_id:06d}",
                 "first_name": first_name,
                 "last_name": last_name,
-                "full_name": full_name,
                 "gender": gender,
                 "birth_date": birth_date,
-                "age": age,
                 "phone": phone,
                 "email": email,
                 "personal_email": personal_email,

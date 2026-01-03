@@ -25,6 +25,7 @@ FACT_OPERATING_COSTS = f"{PROJECT_ID}.{DATASET}.fact_operating_costs"
 FACT_INVENTORY = f"{PROJECT_ID}.{DATASET}.fact_inventory"
 FACT_MARKETING_COSTS = f"{PROJECT_ID}.{DATASET}.fact_marketing_costs"
 FACT_EMPLOYEES = f"{PROJECT_ID}.{DATASET}.fact_employees"  # New employee fact table
+FACT_EMPLOYEE_WAGES = f"{PROJECT_ID}.{DATASET}.fact_employee_wages"  # Employee wage history table
 
 # NORMALIZED SCHEMA DEFINITIONS
 
@@ -32,10 +33,10 @@ FACT_EMPLOYEES = f"{PROJECT_ID}.{DATASET}.fact_employees"  # New employee fact t
 DIM_EMPLOYEES_SCHEMA = [
     {"name": "employee_key", "type": "INTEGER", "mode": "REQUIRED"},
     {"name": "employee_id", "type": "STRING", "mode": "REQUIRED"},
-    {"name": "full_name", "type": "STRING", "mode": "REQUIRED"},
+    {"name": "first_name", "type": "STRING", "mode": "REQUIRED"},
+    {"name": "last_name", "type": "STRING", "mode": "REQUIRED"},
     {"name": "gender", "type": "STRING", "mode": "REQUIRED"},
     {"name": "birth_date", "type": "DATE", "mode": "REQUIRED"},
-    {"name": "age", "type": "INTEGER", "mode": "REQUIRED"},
     {"name": "hire_date", "type": "DATE", "mode": "REQUIRED"},
     {"name": "termination_date", "type": "DATE", "mode": "NULLABLE"},
     {"name": "employment_status", "type": "STRING", "mode": "REQUIRED"},
@@ -103,16 +104,11 @@ DIM_INSURANCE_SCHEMA = [
     {"name": "coverage_level", "type": "STRING", "mode": "REQUIRED"},  # Basic, Standard, Premium
 ]
 
-# Employee fact table - time-varying employee metrics (optimized)
+# Employee fact table - time-varying employee metrics (simplified)
 FACT_EMPLOYEES_SCHEMA = [
     {"name": "employee_fact_key", "type": "INTEGER", "mode": "REQUIRED"},
     {"name": "employee_key", "type": "INTEGER", "mode": "REQUIRED"},
     {"name": "effective_date", "type": "DATE", "mode": "REQUIRED"},
-    
-    # Compensation metrics
-    {"name": "monthly_salary", "type": "INTEGER", "mode": "REQUIRED"},
-    {"name": "annual_bonus", "type": "INTEGER", "mode": "NULLABLE"},
-    {"name": "total_compensation", "type": "INTEGER", "mode": "REQUIRED"},
     
     # Performance metrics
     {"name": "performance_rating", "type": "INTEGER", "mode": "REQUIRED"},
@@ -143,10 +139,21 @@ FACT_EMPLOYEES_SCHEMA = [
     {"name": "vacation_leave_balance", "type": "INTEGER", "mode": "REQUIRED"},
     {"name": "sick_leave_balance", "type": "INTEGER", "mode": "REQUIRED"},
     {"name": "personal_leave_balance", "type": "INTEGER", "mode": "REQUIRED"},
-    
-    # Financial wellness
+]
+
+# Employee wage history table - dated compensation records
+FACT_EMPLOYEE_WAGES_SCHEMA = [
+    {"name": "wage_key", "type": "INTEGER", "mode": "REQUIRED"},
+    {"name": "employee_key", "type": "INTEGER", "mode": "REQUIRED"},
+    {"name": "effective_date", "type": "DATE", "mode": "REQUIRED"},
+    {"name": "job_title", "type": "STRING", "mode": "REQUIRED"},
+    {"name": "job_level", "type": "STRING", "mode": "REQUIRED"},
+    {"name": "department", "type": "STRING", "mode": "REQUIRED"},
+    {"name": "monthly_salary", "type": "INTEGER", "mode": "REQUIRED"},
+    {"name": "annual_salary", "type": "INTEGER", "mode": "REQUIRED"},
+    {"name": "currency", "type": "STRING", "mode": "REQUIRED"},
+    {"name": "years_of_service", "type": "INTEGER", "mode": "REQUIRED"},
     {"name": "salary_grade", "type": "INTEGER", "mode": "REQUIRED"},
-    {"name": "cost_center_allocation", "type": "FLOAT", "mode": "REQUIRED"},
 ]
 
 # Existing schemas (unchanged)
