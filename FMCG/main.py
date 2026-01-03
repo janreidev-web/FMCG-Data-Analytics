@@ -362,6 +362,17 @@ def main():
         marketing_table_exists = table_has_data(client, FACT_MARKETING_COSTS)
         logger.info(f"Marketing costs table exists: {marketing_table_exists}")
         
+        # Drop existing marketing costs table to force regeneration with new campaigns
+        if marketing_table_exists:
+            logger.info("Dropping existing marketing costs table to regenerate with new campaigns...")
+            try:
+                client.delete_table(FACT_MARKETING_COSTS)
+                logger.info("Marketing costs table dropped successfully")
+                marketing_table_exists = False
+            except Exception as e:
+                logger.warning(f"Could not drop marketing costs table: {e}")
+        
+        # Force regenerate marketing costs if it's missing or empty
         if not marketing_table_exists:
             logger.info("Generating marketing costs fact...")
             try:
@@ -375,6 +386,13 @@ def main():
                     start_date = date.today()
                     end_date = date.today()
                 
+                logger.info(f"Marketing costs date range: {start_date} to {end_date}")
+                logger.info(f"Number of campaigns available: {len(campaigns)}")
+                
+                # Debug: Show campaign date ranges
+                for i, campaign in enumerate(campaigns[:3]):  # Show first 3 campaigns
+                    logger.info(f"Campaign {i+1}: {campaign['campaign_name']} ({campaign['start_date']} to {campaign['end_date']})")
+                
                 marketing_costs = generate_fact_marketing_costs(
                     campaigns, 
                     INITIAL_SALES_AMOUNT * 0.15,  # 15% of revenue
@@ -387,6 +405,7 @@ def main():
                     logger.info("Marketing costs loaded successfully")
                 else:
                     logger.warning("No marketing costs generated - skipping table creation")
+                    logger.warning("This might be due to date range mismatch with campaigns")
             except Exception as e:
                 logger.error(f"Error generating marketing costs: {str(e)}")
                 raise
