@@ -66,7 +66,7 @@ jobs:
         export GCP_SERVICE_ACCOUNT="${{ secrets.GCP_SERVICE_ACCOUNT }}"
         
         # Pre-create tables
-        python ../create_tables.py
+        python FMCG-Data-Analytics/create_tables.py
         
         echo "=== Table Creation Completed ==="
         echo "Time: $(date)"
