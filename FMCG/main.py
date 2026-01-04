@@ -233,7 +233,7 @@ def main():
                     logger.info(f"Wages table doesn't exist or couldn't drop: {e}")
                 
                 # Generate historical wage data for all employees (active and terminated)
-                employee_wages = generate_fact_employee_wages(employees_all, jobs_data, departments_data, end_date=date.today())
+                employee_wages = generate_fact_employee_wages(employees_all, jobs_data, departments_data, start_date=date(2015, 1, 1), end_date=date.today())
                 append_df_bq(client, pd.DataFrame(employee_wages), wages_table)
                 logger.info(f"Generated {len(employee_wages)} historical wage records")
             else:

@@ -8,75 +8,12 @@ from datetime import date, timedelta, datetime
 from faker import Faker
 import pandas as pd
 import hashlib
-import uuid
-import time
 from helpers import random_date_range
 from geography import PH_GEOGRAPHY, pick_ph_location
 from config import DAILY_SALES_AMOUNT
+from id_generation import generate_unique_id, generate_readable_id, generate_unique_sale_key
 
 fake = Faker()
-
-# Global ID generation state to ensure uniqueness across all runs
-ID_GENERATOR_STATE = {
-    'sequence_counters': {},
-    'session_id': str(uuid.uuid4())[:8],
-    'timestamp_base': int(time.time() * 1000)
-}
-
-def generate_unique_id(entity_type, use_timestamp=True):
-    """Generate truly unique IDs using entity type, session, timestamp, and sequence"""
-    # Get or initialize sequence counter for this entity type
-    if entity_type not in ID_GENERATOR_STATE['sequence_counters']:
-        ID_GENERATOR_STATE['sequence_counters'][entity_type] = 0
-    
-    # Increment sequence counter
-    ID_GENERATOR_STATE['sequence_counters'][entity_type] += 1
-    sequence = ID_GENERATOR_STATE['sequence_counters'][entity_type]
-    
-    if use_timestamp:
-        # Use timestamp + session + entity type + sequence for uniqueness
-        timestamp_ms = ID_GENERATOR_STATE['timestamp_base'] + sequence
-        unique_str = f"{ID_GENERATOR_STATE['session_id']}{entity_type}{timestamp_ms}{sequence}"
-        # Create hash to ensure reasonable length
-        unique_hash = hashlib.md5(unique_str.encode()).hexdigest()[:12]
-        unique_id = int(unique_hash, 16)
-        
-        # Ensure it fits in 19 digits (BigQuery INTEGER limit: 2^63-1 = 9,223,372,036,854,775,807)
-        max_safe_int = 9223372036854775807  # Max 64-bit signed integer
-        if unique_id > max_safe_int:
-            # If too large, take modulo to fit within range
-            unique_id = unique_id % max_safe_int
-        
-        return unique_id
-    else:
-        # For cases where we want more readable IDs
-        return sequence
-
-def generate_readable_id(prefix, entity_type, padding=4):
-    """Generate readable but unique IDs with prefix"""
-    unique_num = generate_unique_id(entity_type, use_timestamp=False)
-    return f"{prefix}{unique_num:0{padding}d}"
-
-def generate_unique_sale_key(sale_date, product_key, employee_key, retailer_key, sequence_num, timestamp_ms=None):
-    """Generate unique sale key using date + key fields + sequence + timestamp"""
-    # Format: YYYYMMDD (8) + product_key (3) + employee_key (3) + retailer_key (3) + sequence (5) + timestamp_ms (3) = 25 chars
-    # Use hash to fit in 19-digit BigQuery INTEGER limit while maintaining uniqueness
-    date_str = sale_date.strftime("%Y%m%d")
-    if timestamp_ms is None:
-        # Use microseconds from current time for uniqueness
-        timestamp_ms = datetime.now().microsecond // 1000  # Milliseconds (0-999)
-    # Create unique ID from date + keys + sequence + timestamp
-    combined_str = f"{date_str}{product_key:03d}{employee_key:03d}{retailer_key:03d}{sequence_num:05d}{timestamp_ms:03d}"
-    # Use hash to create compact unique ID that fits in 19 digits
-    key_hash = int(hashlib.md5(combined_str.encode()).hexdigest()[:11], 16)  # 11 hex chars = ~13 decimal digits
-    # Combine date prefix (8) with hash (11) = 19 digits max
-    # Format hash as 11-digit number (pad with zeros if needed)
-    hash_str = f"{key_hash:011d}"
-    unique_id = int(f"{date_str}{hash_str}")
-    # Ensure it fits in 19 digits (BigQuery INTEGER limit)
-    if len(str(unique_id)) > 19:
-        unique_id = int(str(unique_id)[:19])
-    return unique_id
 
 def generate_unique_wage_key(employee_key, effective_date, sequence_num):
     """Generate unique wage key using employee + date + sequence"""
@@ -529,7 +466,7 @@ def generate_dim_employees_normalized(num_employees, locations, jobs, banks, ins
     return employees
 
 def generate_fact_employee_wages(employees, jobs, departments=None, start_date=None, end_date=None, start_id=1):
-    """Generate annual wage records for all employees with historical data from hire date to present"""
+    """Generate annual wage records for all employees with historical data from 2015 to present"""
     wages = []
     wage_sequence = 0
     
@@ -540,6 +477,10 @@ def generate_fact_employee_wages(employees, jobs, departments=None, start_date=N
     dept_lookup = {}
     if departments:
         dept_lookup = {dept["department_key"]: dept["department_name"] for dept in departments}
+    
+    # Default start date is 2015-01-01 for historical data
+    if start_date is None:
+        start_date = date(2015, 1, 1)
     
     # Default end date is today if not provided
     if end_date is None:
@@ -557,14 +498,18 @@ def generate_fact_employee_wages(employees, jobs, departments=None, start_date=N
         else:
             end_employment = end_date
         
-        # Skip if employee hasn't worked yet
-        if hire_date > end_employment:
+        # For historical data, start from 2015 or hire date, whichever is later
+        # But ensure we have data from 2015 for all employees who were employed at any point since 2015
+        historical_start = max(start_date, hire_date)
+        
+        # Skip if employee wasn't employed during the historical period
+        if end_employment < start_date or hire_date > end_date:
             continue
         
         # Get department name
         department_name = dept_lookup.get(job.get("department_key"), "Unknown")
         
-        # Initial salary based on job
+        # Initial salary based on job (back-calculated for 2015)
         base_salary = random.randint(job["base_salary_min"], job["base_salary_max"])
         
         # Adjust for work type
@@ -577,12 +522,12 @@ def generate_fact_employee_wages(employees, jobs, departments=None, start_date=N
         elif job["work_type"] == "Probationary":
             base_salary = int(base_salary * 0.8)
         
-        # Generate wage records for each year from hire_date to end_employment
-        # Start from the year of hire
-        current_year_start = date(hire_date.year, 1, 1)
-        if current_year_start < hire_date:
-            # If hired mid-year, start from hire date
-            current_year_start = hire_date
+        # Generate wage records for each year from historical_start to min(end_employment, end_date)
+        # Start from the year of historical start
+        current_year_start = date(historical_start.year, 1, 1)
+        if current_year_start < historical_start:
+            # If started mid-year, start from historical start
+            current_year_start = historical_start
         
         current_salary = base_salary
         years_of_service = 0
@@ -603,13 +548,15 @@ def generate_fact_employee_wages(employees, jobs, departments=None, start_date=N
             salary_by_year[year] = int(salary_by_year[year - 1] * (1 + raise_percentage))
         
         # Generate records for each year
-        while current_year_start <= end_employment:
+        while current_year_start <= min(end_employment, end_date):
             # Determine the end date for this record (end of year or end_employment, whichever is earlier)
             year_end = date(current_year_start.year, 12, 31)
-            record_end_date = min(year_end, end_employment)
+            record_end_date = min(year_end, end_employment, end_date)
             
             # Calculate years of service at the start of this record
             years_of_service = (current_year_start - hire_date).days // 365
+            if years_of_service < 0:
+                years_of_service = 0  # For employees hired after 2015, back-calculate service
             
             # Get salary for this year (capped at 10 years for raises)
             salary_year = min(years_of_service, 10)
@@ -622,8 +569,8 @@ def generate_fact_employee_wages(employees, jobs, departments=None, start_date=N
             # Use the start of the year as effective_date for consistency
             # But if hired mid-year, use hire date for first record
             effective_date = date(current_year_start.year, 1, 1)
-            if effective_date < hire_date:
-                effective_date = hire_date
+            if effective_date < historical_start:
+                effective_date = historical_start
             
             wage_sequence += 1
             wages.append({
@@ -1175,7 +1122,7 @@ def generate_daily_sales_with_delivery_updates(employees, products, retailers, c
         # Use current timestamp in milliseconds for additional uniqueness
         timestamp_ms = int((datetime.now().timestamp() * 1000) % 1000)
         sales.append({
-            "sale_key": generate_unique_sale_key(start_date, product["product_key"], employee["employee_key"], retailer["retailer_key"], sale_sequence, timestamp_ms),
+            "sale_key": generate_unique_sale_key(str(start_date), product["product_key"], employee["employee_key"], retailer["retailer_key"], sale_sequence, timestamp_ms),
             "sale_date": start_date,
             "product_key": product["product_key"],
             "employee_key": employee["employee_key"],
@@ -1334,7 +1281,7 @@ def generate_fact_sales(employees, products, retailers, campaigns, target_amount
             # Use current timestamp in milliseconds for additional uniqueness
             timestamp_ms = int((datetime.now().timestamp() * 1000) % 1000)
             sales.append({
-                "sale_key": generate_unique_sale_key(current_date, product["product_key"], employee["employee_key"], retailer["retailer_key"], sale_sequence, timestamp_ms),
+                "sale_key": generate_unique_sale_key(str(current_date), product["product_key"], employee["employee_key"], retailer["retailer_key"], sale_sequence, timestamp_ms),
                 "sale_date": current_date,
                 "product_key": product["product_key"],
                 "employee_key": employee["employee_key"],
