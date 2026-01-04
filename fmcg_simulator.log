@@ -1,0 +1,10 @@
+2026-01-04 20:58:38,442 - INFO - ============================================================
+2026-01-04 20:58:38,442 - INFO - FMCG Data Simulator - Dimensional Model
+2026-01-04 20:58:38,443 - INFO - Started at: 2026-01-04 20:58:38
+2026-01-04 20:58:38,443 - INFO - ============================================================
+
+2026-01-04 20:58:38,443 - INFO - Connecting to Google Cloud...
+2026-01-04 20:58:50,504 - ERROR - 
+ERROR: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.
+2026-01-04 20:58:50,506 - ERROR - Failed at: 2026-01-04 20:58:50
+2026-01-04 20:58:50,506 - ERROR - Elapsed time: 12.1 seconds

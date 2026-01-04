@@ -612,6 +612,33 @@ def main():
             else:
                 logger.warning("Empty DataFrame - will create table structure only")
             
+            # Check if table exists first, if not create it
+            if not table_has_data(client, FACT_SALES):
+                logger.info(f"Table {FACT_SALES} does not exist. Creating table structure...")
+                # Create empty DataFrame with correct schema to establish table
+                if sales_df.empty:
+                    # Create a sample record to establish schema
+                    sample_schema_df = pd.DataFrame([{
+                        "sale_id": "SAL000001",
+                        "sale_date": date.today(),
+                        "product_id": "PROD000001",
+                        "retailer_id": "RET000001",
+                        "case_quantity": 1,
+                        "unit_price": 100.0,
+                        "discount_percent": 0.0,
+                        "tax_rate": 0.12,
+                        "total_amount": 112.0,
+                        "commission_amount": 3.36,
+                        "currency": "PHP",
+                        "payment_method": "Cash",
+                        "payment_status": "Paid",
+                        "delivery_status": "Pending",
+                        "expected_delivery_date": date.today() + timedelta(days=1),
+                        "actual_delivery_date": None
+                    }])
+                    append_df_bq_safe(client, sample_schema_df, FACT_SALES, "sale_id")
+                    logger.info("Created table schema with sample record")
+            
             append_df_bq_safe(client, sales_df, FACT_SALES, "sale_id")
             logger.info("Sales data append completed")
         except Exception as e:
