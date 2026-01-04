@@ -8,18 +8,18 @@ from datetime import date, timedelta, datetime
 from faker import Faker
 import pandas as pd
 import hashlib
-from helpers import random_date_range
-from geography import PH_GEOGRAPHY, pick_ph_location
-from config import DAILY_SALES_AMOUNT
-from id_generation import generate_unique_id, generate_readable_id, generate_unique_sale_key
+from ..helpers import random_date_range
+from ..geography import PH_GEOGRAPHY, pick_ph_location
+from ..config import DAILY_SALES_AMOUNT
+from ..id_generation import generate_unique_id, generate_readable_id, generate_unique_sale_key
 
 fake = Faker()
 
-def generate_unique_wage_key(employee_key, effective_date, sequence_num):
+def generate_unique_wage_key(employee_id, effective_date, sequence_num):
     """Generate unique wage key using employee + date + sequence"""
-    # Use hash-based approach for large employee keys
+    # Use hash-based approach for large employee ids
     date_str = effective_date.strftime("%Y%m%d")
-    combined_str = f"{employee_key}{date_str}{sequence_num}"
+    combined_str = f"{employee_id}{date_str}{sequence_num}"
     # Create hash to ensure reasonable length and fit within BigQuery limits
     unique_hash = hashlib.md5(combined_str.encode()).hexdigest()[:12]
     unique_id = int(unique_hash, 16)
@@ -77,11 +77,11 @@ def generate_unique_marketing_cost_key(campaign_key, cost_date, category_code, s
     
     return unique_id
 
-def generate_unique_employee_fact_key(employee_key, effective_date, sequence_num):
+def generate_unique_employee_fact_key(employee_id, effective_date, sequence_num):
     """Generate unique employee fact key using employee + date + sequence"""
-    # Use hash-based approach for large employee keys
+    # Use hash-based approach for large employee ids
     date_str = effective_date.strftime("%Y%m%d")
-    combined_str = f"{employee_key}{date_str}{sequence_num}"
+    combined_str = f"{employee_id}{date_str}{sequence_num}"
     # Create hash to ensure reasonable length and fit within BigQuery limits
     unique_hash = hashlib.md5(combined_str.encode()).hexdigest()[:12]
     unique_id = int(unique_hash, 16)
@@ -303,14 +303,14 @@ def generate_dim_employees_normalized(num_employees, locations, jobs, banks, ins
         raise ValueError("All dimension data (locations, jobs, banks, insurance) must be provided")
     
     # Create lookups for robust foreign key relationships
-    location_lookup = {loc["location_key"]: loc for loc in locations}
-    job_lookup = {job["job_key"]: job for job in jobs}
+    location_lookup = {loc["location_id"]: loc for loc in locations}
+    job_lookup = {job["job_id"]: job for job in jobs}
     
     # Create department lookup from passed departments or generate if not provided
     if departments is None:
         departments = generate_dim_departments()
-    dept_lookup = {dept["department_name"]: dept["department_key"] for dept in departments}
-    dept_reverse_lookup = {dept["department_key"]: dept["department_name"] for dept in departments}
+    dept_lookup = {dept["department_name"]: dept["department_id"] for dept in departments}
+    dept_reverse_lookup = {dept["department_id"]: dept["department_name"] for dept in departments}
     
     # Department distribution for realistic company structure
     dept_distribution = {
@@ -334,8 +334,18 @@ def generate_dim_employees_normalized(num_employees, locations, jobs, banks, ins
             jobs_by_dept[dept_name] = []
         jobs_by_dept[dept_name].append(job)
     
+    # Calculate department counts with proper distribution
+    dept_counts = {}
+    remaining_employees = num_employees
+    
     for dept_name, percentage in dept_distribution.items():
-        dept_count = int(num_employees * percentage)
+        if dept_name == list(dept_distribution.keys())[-1]:  # Last department gets remaining employees
+            dept_count = remaining_employees
+        else:
+            dept_count = max(0, int(num_employees * percentage))
+            remaining_employees -= dept_count
+        
+        dept_counts[dept_name] = dept_count
         dept_jobs = jobs_by_dept.get(dept_name, [])
         
         for i in range(dept_count):
@@ -568,8 +578,8 @@ def generate_fact_employee_wages(employees, jobs, departments=None, start_date=N
             
             wage_sequence += 1
             wages.append({
-                "wage_key": generate_unique_wage_key(employee["employee_key"], effective_date, wage_sequence),
-                "employee_key": employee["employee_key"],
+                "wage_key": generate_unique_wage_key(employee["employee_id"], effective_date, wage_sequence),
+                "employee_id": employee["employee_id"],
                 "effective_date": effective_date,
                 "job_title": job["job_title"],
                 "job_level": job["job_level"],
@@ -636,8 +646,8 @@ def generate_fact_employees(employees, jobs, start_id=1):
         fact_sequence += 1
         effective_date = date.today()
         employee_facts.append({
-            "employee_fact_key": generate_unique_employee_fact_key(employee["employee_key"], effective_date, fact_sequence),
-            "employee_key": employee["employee_key"],
+            "employee_fact_key": generate_unique_employee_fact_key(employee["employee_id"], effective_date, fact_sequence),
+            "employee_id": employee["employee_id"],
             "effective_date": effective_date,
             
             # Performance metrics
@@ -1111,10 +1121,10 @@ def generate_daily_sales_with_delivery_updates(employees, products, retailers, c
     active_products = [p for p in products if p.get('status') == 'Active']
     
     # Create safe lookup dictionaries to prevent relationship errors
-    employee_lookup = {emp["employee_key"]: emp for emp in active_employees}
-    product_lookup = {prod["product_key"]: prod for prod in active_products}
-    retailer_lookup = {ret["retailer_key"]: ret for ret in retailers}
-    campaign_lookup = {camp["campaign_key"]: camp for camp in campaigns}
+    employee_lookup = {emp["employee_id"]: emp for emp in active_employees}
+    product_lookup = {prod["product_id"]: prod for prod in active_products}
+    retailer_lookup = {ret["retailer_id"]: ret for ret in retailers}
+    campaign_lookup = {camp["campaign_id"]: camp for camp in campaigns}
     
     # Validate we have enough records for relationships
     if not active_employees:
@@ -1172,12 +1182,10 @@ def generate_daily_sales_with_delivery_updates(employees, products, retailers, c
         # Use current timestamp in milliseconds for additional uniqueness
         timestamp_ms = int((datetime.now().timestamp() * 1000) % 1000)
         sales.append({
-            "sale_key": generate_unique_sale_key(str(start_date), product["product_key"], employee["employee_key"], retailer["retailer_key"], sale_sequence, timestamp_ms),
+            "sale_key": generate_unique_sale_key(),
             "sale_date": start_date,
-            "product_key": product["product_key"],
-            "employee_key": employee["employee_key"],
-            "retailer_key": retailer["retailer_key"],
-            "campaign_key": campaign["campaign_key"] if campaign else None,
+            "product_id": product["product_id"],
+            "retailer_id": retailer["retailer_id"],
             "case_quantity": case_quantity,
             "unit_price": unit_price,
             "discount_percent": discount_percent,

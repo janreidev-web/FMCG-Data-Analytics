@@ -10,7 +10,7 @@ import pandas as pd
 from datetime import datetime, timedelta, date
 import time
 
-from config import (
+from .config import (
     PROJECT_ID, DATASET, INITIAL_EMPLOYEES, INITIAL_PRODUCTS, INITIAL_RETAILERS,
     EMPLOYEES_TABLE, PRODUCTS_TABLE, RETAILERS_TABLE, SALES_TABLE, COSTS_TABLE, INVENTORY_TABLE, MARKETING_TABLE, DATES_TABLE,
     DIM_EMPLOYEES, DIM_PRODUCTS, DIM_RETAILERS, DIM_CAMPAIGNS,
@@ -19,9 +19,9 @@ from config import (
     FACT_SALES, FACT_OPERATING_COSTS, FACT_INVENTORY, FACT_MARKETING_COSTS, FACT_EMPLOYEES,
     INITIAL_SALES_AMOUNT, DAILY_SALES_AMOUNT
 )
-from auth import get_bigquery_client
-from helpers import table_has_data, append_df_bq, append_df_bq_safe, update_delivery_status
-from generators.dimensional import (
+from .auth import get_bigquery_client
+from .helpers import table_has_data, append_df_bq, append_df_bq_safe, update_delivery_status
+from .generators.dimensional import (
     generate_dim_products, generate_dim_employees_normalized, generate_dim_locations,
     generate_dim_departments, generate_dim_jobs, generate_dim_banks, generate_dim_insurance,
     generate_fact_employees, generate_fact_employee_wages, generate_dim_retailers_normalized,
@@ -30,7 +30,7 @@ from generators.dimensional import (
     generate_dim_dates, generate_dim_categories, generate_dim_brands, generate_dim_subcategories,
     validate_relationships
 )
-from generators.bigquery_updates import (
+from .generators.bigquery_updates import (
     execute_method_1_overwrite, execute_method_2_append, execute_method_3_staging,
     create_current_delivery_status_view, get_delivery_status_summary,
     compare_update_methods
@@ -187,7 +187,7 @@ def main():
                 append_df_bq(client, pd.DataFrame(brands), DIM_BRANDS)
             else:
                 logger.info("Brands dimension already exists. Skipping.")
-                brands_df = client.query(f"SELECT brand_key, brand_id, brand_name, brand_code FROM `{DIM_BRANDS}`").to_dataframe()
+                brands_df = client.query(f"SELECT brand_id, brand_name, brand_code FROM `{DIM_BRANDS}`").to_dataframe()
                 brands = brands_df.to_dict("records")
             
             if not table_has_data(client, DIM_SUBCATEGORIES):
@@ -323,12 +323,12 @@ def main():
             insurance = insurance_df.to_dict("records")
             
             # Use more efficient queries with specific fields only
-            products_df = client.query(f"SELECT product_key, product_id, product_name, category_key, brand_key, subcategory_key, wholesale_price, retail_price, status, created_date FROM `{DIM_PRODUCTS}` WHERE status = 'Active'").to_dataframe()
+            products_df = client.query(f"SELECT product_id, product_name, category_id, brand_id, subcategory_id, wholesale_price, retail_price, status, created_date FROM `{DIM_PRODUCTS}` WHERE status = 'Active'").to_dataframe()
             
             # Load normalized employee data with joins
             employees_df = client.query(f"""
                 SELECT 
-                    e.employee_key, e.employee_id, e.first_name, e.last_name, e.employment_status, 
+                    e.employee_id, e.first_name, e.last_name, e.employment_status, 
                     e.hire_date, e.termination_date, e.gender, e.birth_date,
                     e.phone, e.email, e.personal_email,
                     e.tin_number, e.sss_number, e.philhealth_number, e.pagibig_number, e.blood_type,
@@ -346,25 +346,25 @@ def main():
                     ef.productivity_score, ef.retention_risk_score, ef.skill_gap_score,
                     ef.health_utilization_rate
                 FROM `{DIM_EMPLOYEES}` e
-                LEFT JOIN `{DIM_JOBS}` j ON e.job_key = j.job_key
-                LEFT JOIN `{DIM_DEPARTMENTS}` d ON j.department_key = d.department_key
-                LEFT JOIN `{DIM_LOCATIONS}` l ON e.location_key = l.location_key
-                LEFT JOIN `{DIM_BANKS}` b ON e.bank_key = b.bank_key
-                LEFT JOIN `{DIM_INSURANCE}` i ON e.insurance_key = i.insurance_key
-                LEFT JOIN `{FACT_EMPLOYEES}` ef ON e.employee_key = ef.employee_key
+                LEFT JOIN `{DIM_JOBS}` j ON e.job_id = j.job_id
+                LEFT JOIN `{DIM_DEPARTMENTS}` d ON j.department_id = d.department_id
+                LEFT JOIN `{DIM_LOCATIONS}` l ON e.location_id = l.location_id
+                LEFT JOIN `{DIM_BANKS}` b ON e.bank_id = b.bank_id
+                LEFT JOIN `{DIM_INSURANCE}` i ON e.insurance_id = i.insurance_id
+                LEFT JOIN `{FACT_EMPLOYEES}` ef ON e.employee_id = ef.employee_id
                 WHERE e.employment_status = 'Active'
             """).to_dataframe()
             
             # Load normalized retailer data
             retailers_df = client.query(f"""
                 SELECT 
-                    r.retailer_key, r.retailer_id, r.retailer_name, r.retailer_type,
+                    r.retailer_id, r.retailer_name, r.retailer_type,
                     l.city, l.province, l.region, l.country
                 FROM `{DIM_RETAILERS}` r
-                LEFT JOIN `{DIM_LOCATIONS}` l ON r.location_key = l.location_key
+                LEFT JOIN `{DIM_LOCATIONS}` l ON r.location_id = l.location_id
             """).to_dataframe()
             
-            campaigns_df = client.query(f"SELECT campaign_key, campaign_id, campaign_name, campaign_type, start_date, end_date, budget, currency FROM `{DIM_CAMPAIGNS}`").to_dataframe()
+            campaigns_df = client.query(f"SELECT campaign_id, campaign_name, campaign_type, start_date, end_date, budget, currency FROM `{DIM_CAMPAIGNS}`").to_dataframe()
             
             # Convert to dictionaries for validation and fact generation
             employees = employees_df.to_dict("records")
@@ -383,12 +383,12 @@ def main():
             if "readsessions.create" in str(e):
                 logger.warning(f"BigQuery read sessions permission error. Using alternative approach...")
                 # Use smaller queries without read sessions
-                products_df = client.query(f"SELECT product_key, product_id, product_name, category_key, brand_key, subcategory_key, wholesale_price, retail_price, status, created_date FROM `{DIM_PRODUCTS}`").to_dataframe()
+                products_df = client.query(f"SELECT product_id, product_name, category_id, brand_id, subcategory_id, wholesale_price, retail_price, status, created_date FROM `{DIM_PRODUCTS}`").to_dataframe()
                 
                 # Simplified employee query for fallback
                 employees_df = client.query(f"""
                     SELECT 
-                        e.employee_key, e.employee_id, e.first_name, e.last_name, e.employment_status, 
+                        e.employee_id, e.first_name, e.last_name, e.employment_status, 
                         e.hire_date, e.termination_date, e.gender, e.birth_date,
                         e.phone, e.email, e.personal_email,
                         e.tin_number, e.sss_number, e.philhealth_number, e.pagibig_number, e.blood_type,
@@ -399,22 +399,22 @@ def main():
                         b.bank_name,
                         i.provider_name as health_insurance_provider
                     FROM `{DIM_EMPLOYEES}` e
-                    LEFT JOIN `{DIM_JOBS}` j ON e.job_key = j.job_key
-                    LEFT JOIN `{DIM_DEPARTMENTS}` d ON j.department_key = d.department_key
-                    LEFT JOIN `{DIM_LOCATIONS}` l ON e.location_key = l.location_key
-                    LEFT JOIN `{DIM_BANKS}` b ON e.bank_key = b.bank_key
-                    LEFT JOIN `{DIM_INSURANCE}` i ON e.insurance_key = i.insurance_key
+                    LEFT JOIN `{DIM_JOBS}` j ON e.job_id = j.job_id
+                    LEFT JOIN `{DIM_DEPARTMENTS}` d ON j.department_id = d.department_id
+                    LEFT JOIN `{DIM_LOCATIONS}` l ON e.location_id = l.location_id
+                    LEFT JOIN `{DIM_BANKS}` b ON e.bank_id = b.bank_id
+                    LEFT JOIN `{DIM_INSURANCE}` i ON e.insurance_id = i.insurance_id
                 """).to_dataframe()
                 
                 retailers_df = client.query(f"""
                     SELECT 
-                        r.retailer_key, r.retailer_id, r.retailer_name, r.retailer_type,
+                        r.retailer_id, r.retailer_name, r.retailer_type,
                         l.city, l.province, l.region, l.country
                     FROM `{DIM_RETAILERS}` r
-                    LEFT JOIN `{DIM_LOCATIONS}` l ON r.location_key = l.location_key
+                    LEFT JOIN `{DIM_LOCATIONS}` l ON r.location_id = l.location_id
                 """).to_dataframe()
                 
-                campaigns_df = client.query(f"SELECT campaign_key, campaign_id, campaign_name, campaign_type, start_date, end_date, budget, currency FROM `{DIM_CAMPAIGNS}`").to_dataframe()
+                campaigns_df = client.query(f"SELECT campaign_id, campaign_name, campaign_type, start_date, end_date, budget, currency FROM `{DIM_CAMPAIGNS}`").to_dataframe()
             else:
                 raise
         
@@ -513,12 +513,10 @@ def main():
                     
                     for i in range(num_sales):
                         sample_sale = {
-                            "sale_key": 1000000 + i,  # Simple sequential keys
+                            "sale_id": 1000000 + i,  # Simple sequential keys
                             "sale_date": sample_date,
-                            "product_key": available_products[i % len(available_products)]["product_key"],
-                            "employee_key": available_employees[i % len(available_employees)]["employee_key"],
-                            "retailer_key": retailers[i % len(retailers)]["retailer_key"],
-                            "campaign_key": campaigns[0]["campaign_key"] if campaigns else None,
+                            "product_id": available_products[i % len(available_products)]["product_id"],
+                            "retailer_id": retailers[i % len(retailers)]["retailer_id"],
                             "case_quantity": 10,
                             "unit_price": amount_per_sale / 10,  # Base price
                             "discount_percent": 0.05,
@@ -559,7 +557,7 @@ def main():
             else:
                 logger.warning("Empty DataFrame - will create table structure only")
             
-            append_df_bq_safe(client, sales_df, FACT_SALES, "sale_key")
+            append_df_bq_safe(client, sales_df, FACT_SALES, "sale_id")
             logger.info("Sales data append completed")
         except Exception as e:
             logger.error(f"Error appending sales data: {e}")
