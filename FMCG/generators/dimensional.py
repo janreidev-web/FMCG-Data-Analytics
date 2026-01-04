@@ -4,8 +4,11 @@ Generates data for the normalized schema to reduce redundancy
 """
 
 import random
-from datetime import date, timedelta
+import time
+from datetime import datetime, timedelta, date
 from faker import Faker
+from config import *
+from id_generator import get_id_generator, generate_key, generate_id, generate_government_id, generate_unique_key
 import pandas as pd
 from helpers import random_date_range
 from geography import PH_GEOGRAPHY, pick_ph_location
@@ -17,17 +20,17 @@ def generate_dim_locations(num_locations=500, start_id=1):
     """Generate locations dimension table with normalized address data"""
     locations = []
     location_set = set()  # To avoid duplicates
+    id_gen = get_id_generator()
     
     for i in range(num_locations):
         # Generate unique location combinations
         max_attempts = 50
         for _ in range(max_attempts):
             region, province, city = pick_ph_location()
-            street_address = fake.street_address()
             postal_code = fake.postcode()
             
-            # Create unique key
-            location_key = f"{street_address}|{city}|{province}|{region}"
+            # Create unique key using the ID generator
+            location_key = generate_unique_key("dim_locations", city, province, region)
             
             if location_key not in location_set:
                 location_set.add(location_key)
@@ -35,12 +38,11 @@ def generate_dim_locations(num_locations=500, start_id=1):
         else:
             # If we can't find a unique location, use a generic one
             region, province, city = pick_ph_location()
-            street_address = f"Address {i+1}"
             postal_code = fake.postcode()
+            location_key = generate_unique_key("dim_locations", city, province, region, f"generic_{i}")
         
         locations.append({
-            "location_key": start_id + i,
-            "street_address": street_address,
+            "location_key": int(location_key) % (2**31),  # Convert to int and ensure positive
             "city": city,
             "province": province,
             "region": region,
@@ -52,24 +54,25 @@ def generate_dim_locations(num_locations=500, start_id=1):
 
 def generate_dim_departments(start_id=1):
     """Generate departments dimension table"""
+    id_gen = get_id_generator()
     departments = [
-        {"department_key": start_id, "department_name": "Sales", "department_code": "SLS", "parent_department_key": None},
-        {"department_key": start_id + 1, "department_name": "Marketing", "department_code": "MKT", "parent_department_key": None},
-        {"department_key": start_id + 2, "department_name": "Operations", "department_code": "OPS", "parent_department_key": None},
-        {"department_key": start_id + 3, "department_name": "Finance", "department_code": "FIN", "parent_department_key": None},
-        {"department_key": start_id + 4, "department_name": "Human Resources", "department_code": "HR", "parent_department_key": None},
-        {"department_key": start_id + 5, "department_name": "Supply Chain", "department_code": "SCH", "parent_department_key": None},
-        {"department_key": start_id + 6, "department_name": "Quality Assurance", "department_code": "QA", "parent_department_key": None},
-        {"department_key": start_id + 7, "department_name": "IT", "department_code": "IT", "parent_department_key": None},
-        {"department_key": start_id + 8, "department_name": "Customer Service", "department_code": "CS", "parent_department_key": None},
-        {"department_key": start_id + 9, "department_name": "Administration", "department_code": "ADM", "parent_department_key": None},
+        {"department_key": generate_key('dim_departments'), "department_name": "Sales", "department_code": "SLS", "parent_department_key": None},
+        {"department_key": generate_key('dim_departments'), "department_name": "Marketing", "department_code": "MKT", "parent_department_key": None},
+        {"department_key": generate_key('dim_departments'), "department_name": "Operations", "department_code": "OPS", "parent_department_key": None},
+        {"department_key": generate_key('dim_departments'), "department_name": "Finance", "department_code": "FIN", "parent_department_key": None},
+        {"department_key": generate_key('dim_departments'), "department_name": "Human Resources", "department_code": "HR", "parent_department_key": None},
+        {"department_key": generate_key('dim_departments'), "department_name": "Supply Chain", "department_code": "SCH", "parent_department_key": None},
+        {"department_key": generate_key('dim_departments'), "department_name": "Quality Assurance", "department_code": "QA", "parent_department_key": None},
+        {"department_key": generate_key('dim_departments'), "department_name": "IT", "department_code": "IT", "parent_department_key": None},
+        {"department_key": generate_key('dim_departments'), "department_name": "Customer Service", "department_code": "CS", "parent_department_key": None},
+        {"department_key": generate_key('dim_departments'), "department_name": "Administration", "department_code": "ADM", "parent_department_key": None},
         
         # Sub-departments (optional hierarchical structure)
-        {"department_key": start_id + 10, "department_name": "Field Sales", "department_code": "SLS-FS", "parent_department_key": start_id},
-        {"department_key": start_id + 11, "department_name": "Inside Sales", "department_code": "SLS-IS", "parent_department_key": start_id},
-        {"department_key": start_id + 12, "department_name": "Digital Marketing", "department_code": "MKT-DM", "parent_department_key": start_id + 1},
-        {"department_key": start_id + 13, "department_name": "Brand Marketing", "department_code": "MKT-BM", "parent_department_key": start_id + 1},
-        {"department_key": start_id + 14, "department_name": "Warehouse Operations", "department_code": "OPS-WH", "parent_department_key": start_id + 2},
+        {"department_key": generate_key('dim_departments'), "department_name": "Field Sales", "department_code": "SLS-FS", "parent_department_key": None},  # Will be updated later
+        {"department_key": generate_key('dim_departments'), "department_name": "Inside Sales", "department_code": "SLS-IS", "parent_department_key": None},  # Will be updated later
+        {"department_key": generate_key('dim_departments'), "department_name": "Digital Marketing", "department_code": "MKT-DM", "parent_department_key": None},  # Will be updated later
+        {"department_key": generate_key('dim_departments'), "department_name": "Brand Marketing", "department_code": "MKT-BM", "parent_department_key": None},  # Will be updated later
+        {"department_key": generate_key('dim_departments'), "department_name": "Warehouse Operations", "department_code": "OPS-WH", "parent_department_key": None},  # Will be updated later
     ]
     
     return departments
@@ -77,7 +80,7 @@ def generate_dim_departments(start_id=1):
 def generate_dim_jobs(departments, start_id=1):
     """Generate jobs dimension table with optimized salary ranges for realistic wage/revenue ratio"""
     jobs = []
-    job_key = start_id
+    id_gen = get_id_generator()
 
     # Optimized salary ranges for 20% wage/revenue ratio
     # Target: ₱6B revenue × 20% = ₱1.2B total wages ÷ 500 employees = ₱2.4M avg annual salary
@@ -103,7 +106,7 @@ def generate_dim_jobs(departments, start_id=1):
             {"title": "Junior Operations Analyst", "level": "Junior", "setup": "Hybrid", "type": "Full-time"},
             {"title": "Senior Operations Specialist", "level": "Senior", "setup": "Hybrid", "type": "Full-time"},
             {"title": "Operations Manager", "level": "Manager", "setup": "On-site", "type": "Full-time"},
-            {"title": "VP of Operations", "level": "Director", "setup": "Hybrid", "type": "Full-time"},
+            {"title": "VP of Operati ons", "level": "Director", "setup": "Hybrid", "type": "Full-time"},
         ],
         "Marketing": [
             {"title": "Marketing Assistant", "level": "Entry", "setup": "Hybrid", "type": "Full-time"},
@@ -181,7 +184,7 @@ def generate_dim_jobs(departments, start_id=1):
                 min_sal, max_sal = salary_ranges[level]
                 
                 jobs.append({
-                    "job_key": job_key,
+                    "job_key": generate_key('dim_jobs'),
                     "job_title": position["title"],
                     "job_level": level,
                     "department_key": dept_key,
@@ -190,38 +193,39 @@ def generate_dim_jobs(departments, start_id=1):
                     "base_salary_min": min_sal,
                     "base_salary_max": max_sal,
                 })
-                job_key += 1
 
     return jobs
 
 def generate_dim_banks(start_id=1):
     """Generate banks dimension table"""
+    id_gen = get_id_generator()
     banks = [
-        {"bank_key": start_id, "bank_name": "BDO", "bank_code": "BDO", "branch_code": None},
-        {"bank_key": start_id + 1, "bank_name": "BPI", "bank_code": "BPI", "branch_code": None},
-        {"bank_key": start_id + 2, "bank_name": "Metrobank", "bank_code": "MB", "branch_code": None},
-        {"bank_key": start_id + 3, "bank_name": "Landbank", "bank_code": "LBP", "branch_code": None},
-        {"bank_key": start_id + 4, "bank_name": "PNB", "bank_code": "PNB", "branch_code": None},
-        {"bank_key": start_id + 5, "bank_name": "UnionBank", "bank_code": "UB", "branch_code": None},
-        {"bank_key": start_id + 6, "bank_name": "China Bank", "bank_code": "CHIB", "branch_code": None},
-        {"bank_key": start_id + 7, "bank_name": "Security Bank", "bank_code": "SECB", "branch_code": None},
-        {"bank_key": start_id + 8, "bank_name": "RCBC", "bank_code": "RCBC", "branch_code": None},
-        {"bank_key": start_id + 9, "bank_name": "PSBank", "bank_code": "PSB", "branch_code": None},
+        {"bank_key": generate_key('dim_banks'), "bank_name": "BDO", "bank_code": "BDO", "branch_code": None},
+        {"bank_key": generate_key('dim_banks'), "bank_name": "BPI", "bank_code": "BPI", "branch_code": None},
+        {"bank_key": generate_key('dim_banks'), "bank_name": "Metrobank", "bank_code": "MB", "branch_code": None},
+        {"bank_key": generate_key('dim_banks'), "bank_name": "Landbank", "bank_code": "LBP", "branch_code": None},
+        {"bank_key": generate_key('dim_banks'), "bank_name": "PNB", "bank_code": "PNB", "branch_code": None},
+        {"bank_key": generate_key('dim_banks'), "bank_name": "UnionBank", "bank_code": "UB", "branch_code": None},
+        {"bank_key": generate_key('dim_banks'), "bank_name": "China Bank", "bank_code": "CHIB", "branch_code": None},
+        {"bank_key": generate_key('dim_banks'), "bank_name": "Security Bank", "bank_code": "SECB", "branch_code": None},
+        {"bank_key": generate_key('dim_banks'), "bank_name": "RCBC", "bank_code": "RCBC", "branch_code": None},
+        {"bank_key": generate_key('dim_banks'), "bank_name": "PSBank", "bank_code": "PSB", "branch_code": None},
     ]
     
     return banks
 
 def generate_dim_insurance(start_id=1):
     """Generate insurance dimension table"""
+    id_gen = get_id_generator()
     insurance = [
-        {"insurance_key": start_id, "provider_name": "PhilHealth", "provider_type": "Health", "coverage_level": "Standard"},
-        {"insurance_key": start_id + 1, "provider_name": "Maxicare", "provider_type": "Health", "coverage_level": "Premium"},
-        {"insurance_key": start_id + 2, "provider_name": "MediCard", "provider_type": "Health", "coverage_level": "Standard"},
-        {"insurance_key": start_id + 3, "provider_name": "Intellicare", "provider_type": "Health", "coverage_level": "Basic"},
-        {"insurance_key": start_id + 4, "provider_name": "Sun Life", "provider_type": "Life", "coverage_level": "Premium"},
-        {"insurance_key": start_id + 5, "provider_name": "Manulife", "provider_type": "Life", "coverage_level": "Standard"},
-        {"insurance_key": start_id + 6, "provider_name": "AXA", "provider_type": "Health", "coverage_level": "Premium"},
-        {"insurance_key": start_id + 7, "provider_name": "Pacific Cross", "provider_type": "Health", "coverage_level": "Standard"},
+        {"insurance_key": generate_key('dim_insurance'), "provider_name": "PhilHealth", "provider_type": "Health", "coverage_level": "Standard"},
+        {"insurance_key": generate_key('dim_insurance'), "provider_name": "Maxicare", "provider_type": "Health", "coverage_level": "Premium"},
+        {"insurance_key": generate_key('dim_insurance'), "provider_name": "MediCard", "provider_type": "Health", "coverage_level": "Standard"},
+        {"insurance_key": generate_key('dim_insurance'), "provider_name": "Intellicare", "provider_type": "Health", "coverage_level": "Basic"},
+        {"insurance_key": generate_key('dim_insurance'), "provider_name": "Sun Life", "provider_type": "Life", "coverage_level": "Premium"},
+        {"insurance_key": generate_key('dim_insurance'), "provider_name": "Manulife", "provider_type": "Life", "coverage_level": "Standard"},
+        {"insurance_key": generate_key('dim_insurance'), "provider_name": "AXA", "provider_type": "Health", "coverage_level": "Premium"},
+        {"insurance_key": generate_key('dim_insurance'), "provider_name": "Pacific Cross", "provider_type": "Health", "coverage_level": "Standard"},
     ]
     
     return insurance
@@ -237,6 +241,8 @@ def generate_dim_employees_normalized(num_employees, locations, jobs, banks, ins
     # Create lookups for robust foreign key relationships
     location_lookup = {loc["location_key"]: loc for loc in locations}
     job_lookup = {job["job_key"]: job for job in jobs}
+    
+    id_gen = get_id_generator()
     
     # Create department lookup from passed departments or generate if not provided
     if departments is None:
@@ -266,7 +272,6 @@ def generate_dim_employees_normalized(num_employees, locations, jobs, banks, ins
             jobs_by_dept[dept_name] = []
         jobs_by_dept[dept_name].append(job)
     
-    employee_id = start_id
     for dept_name, percentage in dept_distribution.items():
         dept_count = int(num_employees * percentage)
         dept_jobs = jobs_by_dept.get(dept_name, [])
@@ -307,11 +312,15 @@ def generate_dim_employees_normalized(num_employees, locations, jobs, banks, ins
             # Assign random job from department
             job = random.choice(dept_jobs) if dept_jobs else None
             
-            # Generate government IDs
-            tin_number = f"{random.randint(100000000, 999999999)}"
-            sss_number = f"{random.randint(1000000000, 9999999999)}"
-            philhealth_number = f"{random.randint(100000000000, 999999999999)}"
-            pagibig_number = f"{random.randint(1000000000, 9999999999)}"
+            # Generate government IDs using centralized generator
+            tin_number = generate_government_id('tin')
+            sss_number = generate_government_id('sss')
+            philhealth_number = generate_government_id('philhealth')
+            pagibig_number = generate_government_id('pagibig')
+            
+            # Generate unique employee key and ID
+            employee_key = generate_key('dim_employees')
+            employee_id = generate_id('dim_employees', numeric_id=employee_key)
             
             # Random location, bank, insurance
             location = random.choice(locations)
@@ -319,7 +328,7 @@ def generate_dim_employees_normalized(num_employees, locations, jobs, banks, ins
             ins = random.choice(insurance)
             
             # Employment status (95% active for realistic company with 20% wage ratio)
-            employment_status = random.choices(["Active", "Terminated", "On Leave"], weights=[0.95, 0.04, 0.01])[0]
+            employment_status = random.choices(["Active", "Terminated"], weights=[0.95, 0.05])[0]
             
             # If terminated, generate termination date
             termination_date = None
@@ -343,8 +352,8 @@ def generate_dim_employees_normalized(num_employees, locations, jobs, banks, ins
             emergency_contact_phone = fake.phone_number()
             
             employees.append({
-                "employee_key": employee_id,
-                "employee_id": f"EMP{employee_id:06d}",
+                "employee_key": employee_key,
+                "employee_id": employee_id,
                 "first_name": first_name,
                 "last_name": last_name,
                 "gender": gender,
@@ -368,15 +377,19 @@ def generate_dim_employees_normalized(num_employees, locations, jobs, banks, ins
                 "emergency_contact_relation": emergency_contact_relation,
                 "emergency_contact_phone": emergency_contact_phone
             })
-            
-            employee_id += 1
     
     return employees
 
 def generate_fact_employee_wages(employees, jobs, start_date=None, end_date=None, start_id=1):
-    """Generate annual wage records for all employees based on their actual employment periods"""
+    """Generate annual wage records for all employees from 2015 to present"""
     wages = []
-    wage_key = start_id
+    id_gen = get_id_generator()
+    
+    # Default to 2015-present if no dates specified
+    if start_date is None:
+        start_date = date(2015, 1, 1)
+    if end_date is None:
+        end_date = date.today()
     
     # Create job lookup
     job_lookup = {job["job_key"]: job for job in jobs}
@@ -391,13 +404,13 @@ def generate_fact_employee_wages(employees, jobs, start_date=None, end_date=None
         if employee["employment_status"] == "Terminated" and employee["termination_date"]:
             end_employment = employee["termination_date"]
         else:
-            end_employment = date.today()
+            end_employment = end_date
         
         # Skip if employee hasn't worked yet
         if hire_date > end_employment:
             continue
         
-        # Initial salary based on job
+        # Initial salary based on job (at hire time)
         base_salary = random.randint(job["base_salary_min"], job["base_salary_max"])
         
         # Adjust for work type
@@ -410,60 +423,71 @@ def generate_fact_employee_wages(employees, jobs, start_date=None, end_date=None
         elif job["work_type"] == "Probationary":
             base_salary = int(base_salary * 0.8)
         
-        current_salary = base_salary
+        # Generate annual wage records from max(2015, hire_year) to end_employment
+        start_year = max(start_date.year, hire_date.year)
+        end_year = end_employment.year
         
-        # Calculate total employment duration in years (capped at 10 years for raises)
-        total_years = (end_employment - hire_date).days // 365
-        raise_years = min(total_years, 10)  # Cap at 10 years for raise calculations
-        
-        # Apply raises based on years of service
-        for year in range(1, raise_years + 1):
-            raise_percentage = random.uniform(0.03, 0.08)
-            if job["job_level"] in ["Manager", "Director"]:
-                raise_percentage = random.uniform(0.05, 0.10)
-            elif job["job_level"] == "Senior":
-                raise_percentage = random.uniform(0.04, 0.09)
+        for year in range(start_year, end_year + 1):
+            # Calculate salary for this specific year
+            years_worked = year - hire_date.year
             
-            current_salary = int(current_salary * (1 + raise_percentage))
-        
-        # Calculate salary for the employment period
-        # Both monthly and annual should represent total wages earned during employment
-        if employee["employment_status"] == "Terminated":
-            # For terminated employees: calculate total wages earned from hire to termination
-            months_worked = max(1, (end_employment.year - hire_date.year) * 12 + (end_employment.month - hire_date.month) + 1)
-            annual_salary = current_salary * months_worked  # Total wages earned during employment
-            monthly_salary = current_salary  # Final monthly salary at termination
-            effective_date = end_employment
-        else:
-            # For active employees: current year annual salary (12 months)
-            annual_salary = current_salary * 12
-            monthly_salary = current_salary  # Current monthly salary
-            effective_date = date.today()
-        
-        # Generate single wage record
-        wages.append({
-            "wage_key": wage_key,
-            "employee_key": employee["employee_key"],
-            "effective_date": effective_date,
-            "job_title": job["job_title"],
-            "job_level": job["job_level"],
-            "department": job_lookup.get(job_lookup.get(employee["job_key"], {}).get("department_key"), {}).get("department_name", "Unknown"),
-            "monthly_salary": monthly_salary,
-            "annual_salary": annual_salary,
-            "currency": "PHP",
-            "years_of_service": total_years,
-            "salary_grade": (current_salary // 10000) + 1,
-            "employment_status": employee["employment_status"]
-        })
-        
-        wage_key += 1
+            # Apply raises based on years of service
+            current_salary = base_salary
+            for service_year in range(1, min(years_worked, 10) + 1):
+                raise_percentage = random.uniform(0.03, 0.08)
+                if job["job_level"] in ["Manager", "Director"]:
+                    raise_percentage = random.uniform(0.05, 0.10)
+                elif job["job_level"] == "Senior":
+                    raise_percentage = random.uniform(0.04, 0.09)
+                
+                current_salary = int(current_salary * (1 + raise_percentage))
+            
+            # Determine if employee was active during this year
+            year_start = date(year, 1, 1)
+            year_end = date(year, 12, 31)
+            
+            # Check if employee was employed during this year
+            employee_start = max(hire_date, year_start)
+            employee_end = min(end_employment, year_end)
+            
+            if employee_start <= employee_end:
+                # Calculate months worked in this year
+                if year == hire_date.year:
+                    # First year - count from hire month
+                    months_worked_this_year = 13 - hire_date.month
+                elif year == end_employment.year and employee["employment_status"] == "Terminated":
+                    # Last year - count until termination month
+                    months_worked_this_year = end_employment.month
+                else:
+                    # Full year of employment
+                    months_worked_this_year = 12
+                
+                # Generate wage record for this year
+                wage_key = generate_key('fact_employee_wages')
+                effective_date = date(year, 12, 31)  # Year-end record
+                
+                wages.append({
+                    "wage_key": wage_key,
+                    "employee_key": employee["employee_key"],
+                    "effective_date": effective_date,
+                    "job_title": job["job_title"],
+                    "job_level": job["job_level"],
+                    "department": job_lookup.get(job_lookup.get(employee["job_key"], {}).get("department_key"), {}).get("department_name", "Unknown"),
+                    "monthly_salary": current_salary,
+                    "annual_salary": current_salary * 12,
+                    "currency": "PHP",
+                    "years_of_service": min(years_worked, 10),
+                    "salary_grade": (current_salary // 10000) + 1,
+                    "employment_status": employee["employment_status"] if year == end_year else "Active",
+                    "months_worked_year": months_worked_this_year
+                })
     
     return wages
 
 def generate_fact_employees(employees, jobs, start_id=1):
     """Generate simplified employee fact table with current metrics"""
     employee_facts = []
-    fact_key = start_id
+    id_gen = get_id_generator()
     
     # Create job lookup
     job_lookup = {job["job_key"]: job for job in jobs}
@@ -506,8 +530,11 @@ def generate_fact_employees(employees, jobs, start_id=1):
         sick_leave_balance = random.randint(0, 10)
         personal_leave_balance = random.randint(0, 5)
         
+        # Generate unique employee fact key
+        employee_fact_key = generate_key('fact_employees')
+        
         employee_facts.append({
-            "employee_fact_key": fact_key,
+            "employee_fact_key": employee_fact_key,
             "employee_key": employee["employee_key"],
             "effective_date": date.today(),
             
@@ -541,14 +568,13 @@ def generate_fact_employees(employees, jobs, start_id=1):
             "sick_leave_balance": sick_leave_balance,
             "personal_leave_balance": personal_leave_balance,
         })
-        
-        fact_key += 1
     
     return employee_facts
 
 def generate_fact_inventory(products, start_id=1):
     """Generate inventory fact table with normalized location references"""
     inventory = []
+    id_gen = get_id_generator()
     
     # Define warehouse locations (using existing locations)
     warehouse_locations = [
@@ -557,8 +583,6 @@ def generate_fact_inventory(products, start_id=1):
         "Cebu - Visayas Warehouse",
         "Davao - Mindanao Warehouse"
     ]
-    
-    inventory_key = start_id
     
     for product in products:
         # Generate inventory records for each warehouse location
@@ -573,6 +597,9 @@ def generate_fact_inventory(products, start_id=1):
             # Generate inventory date (recent snapshot)
             inventory_date = fake.date_between_dates(date_start=date.today() - timedelta(days=30), date_end=date.today())
             
+            # Generate unique inventory key
+            inventory_key = generate_key('fact_inventory')
+            
             inventory.append({
                 "inventory_key": inventory_key,
                 "inventory_date": inventory_date,
@@ -582,8 +609,6 @@ def generate_fact_inventory(products, start_id=1):
                 "unit_cost": unit_cost,
                 "currency": "PHP"
             })
-            
-            inventory_key += 1
     
     return inventory
 
@@ -608,6 +633,8 @@ def generate_dim_retailers_normalized(num_retailers, locations, start_id=1):
         "Department Store": 0.01,
     }
     
+    id_gen = get_id_generator()
+    
     # Major chains
     major_chains = [
         "SM Supermarket", "Robinsons Supermarket", "Puregold", "Waltermart",
@@ -616,7 +643,6 @@ def generate_dim_retailers_normalized(num_retailers, locations, start_id=1):
         "SM Hypermarket", "S&R Membership Shopping", "Landmark", "Rustans"
     ]
     
-    retailer_id = start_id
     for retailer_type, percentage in type_distribution.items():
         type_count = int(num_retailers * percentage)
         
@@ -638,15 +664,17 @@ def generate_dim_retailers_normalized(num_retailers, locations, start_id=1):
             else:
                 retailer_name = f"{fake.company().split()[0]} {retailer_type}"
             
+            # Generate unique retailer key and ID
+            retailer_key = generate_key('dim_retailers')
+            retailer_id = generate_id('dim_retailers', numeric_id=retailer_key)
+            
             retailers.append({
-                "retailer_key": retailer_id,
-                "retailer_id": f"R{retailer_id:04}",
+                "retailer_key": retailer_key,
+                "retailer_id": retailer_id,
                 "retailer_name": retailer_name,
                 "retailer_type": retailer_type,
                 "location_key": location_key,
             })
-            
-            retailer_id += 1
     
     return retailers
 
@@ -693,10 +721,16 @@ def generate_dim_products(start_id=1):
         {"category": "Household", "subcategory": "Disinfectant", "brand": "Zonrox", "name": "Color Safe Bleach", "wholesale": 32.00, "retail": 37.00},
     ]
     
+    id_gen = get_id_generator()
+    
     for i, product in enumerate(product_data):
+        # Generate unique product key and ID
+        product_key = generate_key('dim_products')
+        product_id = generate_id('dim_products', numeric_id=product_key)
+        
         products.append({
-            "product_key": start_id + i,
-            "product_id": f"P{start_id + i:03}",
+            "product_key": product_key,
+            "product_id": product_id,
             "product_name": product["name"],
             "category": product["category"],
             "subcategory": product["subcategory"],
@@ -712,7 +746,7 @@ def generate_dim_products(start_id=1):
 def generate_dim_dates(start_id=1):
     """Generate date dimension table based on Power BI DAX logic"""
     dates = []
-    date_key = start_id
+    id_gen = get_id_generator()
     
     # Date range from 2015 to 2030 (matching Power BI DAX)
     start_date = date(2015, 1, 1)
@@ -732,6 +766,9 @@ def generate_dim_dates(start_id=1):
         day_of_week_number = current_date.weekday() + 1  # Monday=1, Sunday=7
         is_weekend = day_of_week_number in {6, 7}  # Saturday=6, Sunday=7
         
+        # Generate unique date key
+        date_key = generate_key('dim_dates')
+        
         dates.append({
             "date_key": date_key,
             "date": current_date,
@@ -746,8 +783,6 @@ def generate_dim_dates(start_id=1):
             "day_of_week_number": day_of_week_number,
             "is_weekend": is_weekend
         })
-        
-        date_key += 1
         current_date += timedelta(days=1)
     
     return dates
@@ -787,10 +822,16 @@ def generate_dim_campaigns(start_id=1):
         {"name": "Year End Sale 2025", "type": "Seasonal", "start": "2025-11-01", "end": "2025-12-31", "budget": 7000000},
     ]
     
+    id_gen = get_id_generator()
+    
     for i, campaign in enumerate(campaign_data):
+        # Generate unique campaign key and ID
+        campaign_key = generate_key('dim_campaigns')
+        campaign_id = generate_id('dim_campaigns', numeric_id=campaign_key)
+        
         campaigns.append({
-            "campaign_key": start_id + i,
-            "campaign_id": f"C{start_id + i:03}",
+            "campaign_key": campaign_key,
+            "campaign_id": campaign_id,
             "campaign_name": campaign["name"],
             "campaign_type": campaign["type"],
             "start_date": date.fromisoformat(campaign["start"]),
@@ -877,7 +918,7 @@ def validate_relationships(employees, products, retailers, campaigns, locations,
 def generate_fact_sales(employees, products, retailers, campaigns, target_amount, start_date=None, end_date=None, start_id=1):
     """Generate sales fact table with realistic growth over time and robust relationships"""
     sales = []
-    sale_key = start_id
+    id_gen = get_id_generator()
     
     if start_date is None:
         start_date = date.today()
@@ -969,6 +1010,9 @@ def generate_fact_sales(employees, products, retailers, campaigns, target_amount
             expected_delivery = current_date + timedelta(days=random.randint(1, 5))
             actual_delivery = expected_delivery if delivery_status == "Delivered" else None
             
+            # Generate unique sale key
+            sale_key = generate_key('fact_sales')
+            
             sales.append({
                 "sale_key": sale_key,
                 "sale_date": current_date,
@@ -993,7 +1037,6 @@ def generate_fact_sales(employees, products, retailers, campaigns, target_amount
             })
             
             current_amount += total_amount
-            sale_key += 1
         
         # Progress reporting
         if len(sales) % 10000 == 0:
@@ -1009,7 +1052,7 @@ def generate_fact_sales(employees, products, retailers, campaigns, target_amount
 def generate_fact_operating_costs(target_amount, start_date=None, end_date=None, start_id=1):
     """Generate operating costs fact table"""
     costs = []
-    cost_key = start_id
+    id_gen = get_id_generator()
     
     if start_date is None:
         start_date = date.today() - timedelta(days=365)
@@ -1042,6 +1085,9 @@ def generate_fact_operating_costs(target_amount, start_date=None, end_date=None,
                 # Generate daily cost for this type with some variation
                 amount = daily_per_type * random.uniform(0.8, 1.2)
                 
+                # Generate unique cost key
+                cost_key = generate_key('fact_operating_costs')
+                
                 costs.append({
                     "cost_key": cost_key,
                     "cost_date": current_date,
@@ -1050,8 +1096,6 @@ def generate_fact_operating_costs(target_amount, start_date=None, end_date=None,
                     "amount": amount,
                     "currency": "PHP"
                 })
-                
-                cost_key += 1
         
         current_date += timedelta(days=1)
     
@@ -1060,7 +1104,7 @@ def generate_fact_operating_costs(target_amount, start_date=None, end_date=None,
 def generate_fact_marketing_costs(campaigns, target_amount, start_date=None, end_date=None, start_id=1):
     """Generate marketing costs fact table"""
     costs = []
-    cost_key = start_id
+    id_gen = get_id_generator()
     
     if start_date is None:
         start_date = date.today() - timedelta(days=365)
@@ -1110,8 +1154,11 @@ def generate_fact_marketing_costs(campaigns, target_amount, start_date=None, end
                 
                 for campaign in active_campaigns:
                     for category in cost_categories:
+                        # Generate unique marketing cost key
+                        marketing_cost_key = generate_key('fact_marketing_costs')
+                        
                         costs.append({
-                            "marketing_cost_key": cost_key,
+                            "marketing_cost_key": marketing_cost_key,
                             "cost_date": current_date,
                             "campaign_key": campaign["campaign_key"],
                             "campaign_id": campaign["campaign_id"],
@@ -1120,12 +1167,14 @@ def generate_fact_marketing_costs(campaigns, target_amount, start_date=None, end
                             "amount": daily_per_campaign / len(cost_categories) * random.uniform(0.8, 1.2),
                             "currency": "PHP"
                         })
-                        cost_key += 1
             else:
                 # No active campaigns - generate general marketing costs
                 for category in cost_categories:
+                    # Generate unique marketing cost key
+                    marketing_cost_key = generate_key('fact_marketing_costs')
+                    
                     costs.append({
-                        "marketing_cost_key": cost_key,
+                        "marketing_cost_key": marketing_cost_key,
                         "cost_date": current_date,
                         "campaign_key": None,
                         "campaign_id": None,
@@ -1134,7 +1183,6 @@ def generate_fact_marketing_costs(campaigns, target_amount, start_date=None, end
                         "amount": daily_target / len(cost_categories) * random.uniform(0.8, 1.2),
                         "currency": "PHP"
                     })
-                    cost_key += 1
             
             current_date += timedelta(days=1)
     

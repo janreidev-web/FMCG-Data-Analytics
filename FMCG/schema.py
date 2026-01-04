@@ -60,7 +60,6 @@ DIM_EMPLOYEES_SCHEMA = [
 # Location dimension - normalized address information
 DIM_LOCATIONS_SCHEMA = [
     {"name": "location_key", "type": "INTEGER", "mode": "REQUIRED"},
-    {"name": "street_address", "type": "STRING", "mode": "REQUIRED"},
     {"name": "city", "type": "STRING", "mode": "REQUIRED"},
     {"name": "province", "type": "STRING", "mode": "REQUIRED"},
     {"name": "region", "type": "STRING", "mode": "REQUIRED"},
@@ -154,6 +153,8 @@ FACT_EMPLOYEE_WAGES_SCHEMA = [
     {"name": "currency", "type": "STRING", "mode": "REQUIRED"},
     {"name": "years_of_service", "type": "INTEGER", "mode": "REQUIRED"},
     {"name": "salary_grade", "type": "INTEGER", "mode": "REQUIRED"},
+    {"name": "employment_status", "type": "STRING", "mode": "REQUIRED"},
+    {"name": "months_worked_year", "type": "INTEGER", "mode": "REQUIRED"},
 ]
 
 # Existing schemas (unchanged)
