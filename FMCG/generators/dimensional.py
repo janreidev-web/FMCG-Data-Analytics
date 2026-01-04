@@ -117,7 +117,6 @@ def generate_dim_locations(num_locations=500, start_id=1):
             postal_code = fake.postcode()
         
         locations.append({
-            "location_key": generate_unique_id("location"),
             "location_id": generate_readable_id("LOC", "location", 4),
             "city": city,
             "province": province,
@@ -131,33 +130,17 @@ def generate_dim_locations(num_locations=500, start_id=1):
 def generate_dim_departments(start_id=1):
     """Generate departments dimension table"""
     departments = [
-        {"department_key": generate_unique_id("department"), "department_id": generate_readable_id("DEPT", "department", 3), "department_name": "Sales", "department_code": "SLS", "parent_department_key": None},
-        {"department_key": generate_unique_id("department"), "department_id": generate_readable_id("DEPT", "department", 3), "department_name": "Marketing", "department_code": "MKT", "parent_department_key": None},
-        {"department_key": generate_unique_id("department"), "department_id": generate_readable_id("DEPT", "department", 3), "department_name": "Operations", "department_code": "OPS", "parent_department_key": None},
-        {"department_key": generate_unique_id("department"), "department_id": generate_readable_id("DEPT", "department", 3), "department_name": "Finance", "department_code": "FIN", "parent_department_key": None},
-        {"department_key": generate_unique_id("department"), "department_id": generate_readable_id("DEPT", "department", 3), "department_name": "Human Resources", "department_code": "HR", "parent_department_key": None},
-        {"department_key": generate_unique_id("department"), "department_id": generate_readable_id("DEPT", "department", 3), "department_name": "Supply Chain", "department_code": "SCH", "parent_department_key": None},
-        {"department_key": generate_unique_id("department"), "department_id": generate_readable_id("DEPT", "department", 3), "department_name": "Quality Assurance", "department_code": "QA", "parent_department_key": None},
-        {"department_key": generate_unique_id("department"), "department_id": generate_readable_id("DEPT", "department", 3), "department_name": "IT", "department_code": "IT", "parent_department_key": None},
-        {"department_key": generate_unique_id("department"), "department_id": generate_readable_id("DEPT", "department", 3), "department_name": "Customer Service", "department_code": "CS", "parent_department_key": None},
-        {"department_key": generate_unique_id("department"), "department_id": generate_readable_id("DEPT", "department", 3), "department_name": "Administration", "department_code": "ADM", "parent_department_key": None},
+        {"department_id": generate_readable_id("DEPT", "department", 3), "department_name": "Sales", "department_code": "SLS"},
+        {"department_id": generate_readable_id("DEPT", "department", 3), "department_name": "Marketing", "department_code": "MKT"},
+        {"department_id": generate_readable_id("DEPT", "department", 3), "department_name": "Operations", "department_code": "OPS"},
+        {"department_id": generate_readable_id("DEPT", "department", 3), "department_name": "Finance", "department_code": "FIN"},
+        {"department_id": generate_readable_id("DEPT", "department", 3), "department_name": "Human Resources", "department_code": "HR"},
+        {"department_id": generate_readable_id("DEPT", "department", 3), "department_name": "Supply Chain", "department_code": "SCH"},
+        {"department_id": generate_readable_id("DEPT", "department", 3), "department_name": "Quality Assurance", "department_code": "QA"},
+        {"department_id": generate_readable_id("DEPT", "department", 3), "department_name": "IT", "department_code": "IT"},
+        {"department_id": generate_readable_id("DEPT", "department", 3), "department_name": "Customer Service", "department_code": "CS"},
+        {"department_id": generate_readable_id("DEPT", "department", 3), "department_name": "Administration", "department_code": "ADM"},
     ]
-    
-    # Store the generated keys for parent relationships
-    sales_key = departments[0]["department_key"]
-    marketing_key = departments[1]["department_key"]
-    operations_key = departments[2]["department_key"]
-    
-    # Add sub-departments with parent relationships
-    sub_departments = [
-        {"department_key": generate_unique_id("department"), "department_id": generate_readable_id("DEPT", "department", 3), "department_name": "Field Sales", "department_code": "SLS-FS", "parent_department_key": sales_key},
-        {"department_key": generate_unique_id("department"), "department_id": generate_readable_id("DEPT", "department", 3), "department_name": "Inside Sales", "department_code": "SLS-IS", "parent_department_key": sales_key},
-        {"department_key": generate_unique_id("department"), "department_id": generate_readable_id("DEPT", "department", 3), "department_name": "Digital Marketing", "department_code": "MKT-DM", "parent_department_key": marketing_key},
-        {"department_key": generate_unique_id("department"), "department_id": generate_readable_id("DEPT", "department", 3), "department_name": "Brand Marketing", "department_code": "MKT-BM", "parent_department_key": marketing_key},
-        {"department_key": generate_unique_id("department"), "department_id": generate_readable_id("DEPT", "department", 3), "department_name": "Warehouse Operations", "department_code": "OPS-WH", "parent_department_key": operations_key},
-    ]
-    
-    departments.extend(sub_departments)
     
     return departments
 
@@ -256,22 +239,21 @@ def generate_dim_jobs(departments, start_id=1):
     }
 
     # Create department lookup
-    dept_lookup = {dept["department_name"]: dept["department_key"] for dept in departments}
+    dept_lookup = {dept["department_name"]: dept["department_id"] for dept in departments}
 
     # Generate jobs
     for department, positions in department_jobs.items():
-        dept_key = dept_lookup.get(department)
-        if dept_key:
+        dept_id = dept_lookup.get(department)
+        if dept_id:
             for position in positions:
                 level = position["level"]
                 min_sal, max_sal = salary_ranges[level]
                 
                 jobs.append({
-                    "job_key": generate_unique_id("job"),
                     "job_id": generate_readable_id("JOB", "job", 5),
                     "job_title": position["title"],
                     "job_level": level,
-                    "department_key": dept_key,
+                    "department_id": dept_id,
                     "work_setup": position["setup"],
                     "work_type": position["type"],
                     "base_salary_min": min_sal,
@@ -283,16 +265,16 @@ def generate_dim_jobs(departments, start_id=1):
 def generate_dim_banks(start_id=1):
     """Generate banks dimension table"""
     banks = [
-        {"bank_key": generate_unique_id("bank"), "bank_id": generate_readable_id("BANK", "bank", 2), "bank_name": "BDO", "bank_code": "BDO", "branch_code": None},
-        {"bank_key": generate_unique_id("bank"), "bank_id": generate_readable_id("BANK", "bank", 2), "bank_name": "BPI", "bank_code": "BPI", "branch_code": None},
-        {"bank_key": generate_unique_id("bank"), "bank_id": generate_readable_id("BANK", "bank", 2), "bank_name": "Metrobank", "bank_code": "MB", "branch_code": None},
-        {"bank_key": generate_unique_id("bank"), "bank_id": generate_readable_id("BANK", "bank", 2), "bank_name": "Landbank", "bank_code": "LBP", "branch_code": None},
-        {"bank_key": generate_unique_id("bank"), "bank_id": generate_readable_id("BANK", "bank", 2), "bank_name": "PNB", "bank_code": "PNB", "branch_code": None},
-        {"bank_key": generate_unique_id("bank"), "bank_id": generate_readable_id("BANK", "bank", 2), "bank_name": "UnionBank", "bank_code": "UB", "branch_code": None},
-        {"bank_key": generate_unique_id("bank"), "bank_id": generate_readable_id("BANK", "bank", 2), "bank_name": "China Bank", "bank_code": "CHIB", "branch_code": None},
-        {"bank_key": generate_unique_id("bank"), "bank_id": generate_readable_id("BANK", "bank", 2), "bank_name": "Security Bank", "bank_code": "SECB", "branch_code": None},
-        {"bank_key": generate_unique_id("bank"), "bank_id": generate_readable_id("BANK", "bank", 2), "bank_name": "RCBC", "bank_code": "RCBC", "branch_code": None},
-        {"bank_key": generate_unique_id("bank"), "bank_id": generate_readable_id("BANK", "bank", 2), "bank_name": "PSBank", "bank_code": "PSB", "branch_code": None},
+        {"bank_id": generate_readable_id("BANK", "bank", 2), "bank_name": "BDO", "bank_code": "BDO", "branch_code": "001"},
+        {"bank_id": generate_readable_id("BANK", "bank", 2), "bank_name": "BPI", "bank_code": "BPI", "branch_code": "002"},
+        {"bank_id": generate_readable_id("BANK", "bank", 2), "bank_name": "Metrobank", "bank_code": "MB", "branch_code": "003"},
+        {"bank_id": generate_readable_id("BANK", "bank", 2), "bank_name": "Landbank", "bank_code": "LBP", "branch_code": "004"},
+        {"bank_id": generate_readable_id("BANK", "bank", 2), "bank_name": "PNB", "bank_code": "PNB", "branch_code": "005"},
+        {"bank_id": generate_readable_id("BANK", "bank", 2), "bank_name": "UnionBank", "bank_code": "UB", "branch_code": "006"},
+        {"bank_id": generate_readable_id("BANK", "bank", 2), "bank_name": "China Bank", "bank_code": "CHIB", "branch_code": "007"},
+        {"bank_id": generate_readable_id("BANK", "bank", 2), "bank_name": "Security Bank", "bank_code": "SECB", "branch_code": "008"},
+        {"bank_id": generate_readable_id("BANK", "bank", 2), "bank_name": "RCBC", "bank_code": "RCBC", "branch_code": "009"},
+        {"bank_id": generate_readable_id("BANK", "bank", 2), "bank_name": "PSBank", "bank_code": "PSB", "branch_code": "010"},
     ]
     
     return banks
@@ -300,14 +282,14 @@ def generate_dim_banks(start_id=1):
 def generate_dim_insurance(start_id=1):
     """Generate insurance dimension table"""
     insurance = [
-        {"insurance_key": generate_unique_id("insurance"), "insurance_id": generate_readable_id("INS", "insurance", 2), "provider_name": "PhilHealth", "provider_type": "Health", "coverage_level": "Standard"},
-        {"insurance_key": generate_unique_id("insurance"), "insurance_id": generate_readable_id("INS", "insurance", 2), "provider_name": "Maxicare", "provider_type": "Health", "coverage_level": "Premium"},
-        {"insurance_key": generate_unique_id("insurance"), "insurance_id": generate_readable_id("INS", "insurance", 2), "provider_name": "MediCard", "provider_type": "Health", "coverage_level": "Standard"},
-        {"insurance_key": generate_unique_id("insurance"), "insurance_id": generate_readable_id("INS", "insurance", 2), "provider_name": "Intellicare", "provider_type": "Health", "coverage_level": "Basic"},
-        {"insurance_key": generate_unique_id("insurance"), "insurance_id": generate_readable_id("INS", "insurance", 2), "provider_name": "Sun Life", "provider_type": "Life", "coverage_level": "Premium"},
-        {"insurance_key": generate_unique_id("insurance"), "insurance_id": generate_readable_id("INS", "insurance", 2), "provider_name": "Manulife", "provider_type": "Life", "coverage_level": "Standard"},
-        {"insurance_key": generate_unique_id("insurance"), "insurance_id": generate_readable_id("INS", "insurance", 2), "provider_name": "AXA", "provider_type": "Health", "coverage_level": "Premium"},
-        {"insurance_key": generate_unique_id("insurance"), "insurance_id": generate_readable_id("INS", "insurance", 2), "provider_name": "Pacific Cross", "provider_type": "Health", "coverage_level": "Standard"},
+        {"insurance_id": generate_readable_id("INS", "insurance", 2), "provider_name": "PhilHealth", "provider_type": "Health", "coverage_level": "Standard"},
+        {"insurance_id": generate_readable_id("INS", "insurance", 2), "provider_name": "Maxicare", "provider_type": "Health", "coverage_level": "Premium"},
+        {"insurance_id": generate_readable_id("INS", "insurance", 2), "provider_name": "MediCard", "provider_type": "Health", "coverage_level": "Standard"},
+        {"insurance_id": generate_readable_id("INS", "insurance", 2), "provider_name": "Intellicare", "provider_type": "Health", "coverage_level": "Basic"},
+        {"insurance_id": generate_readable_id("INS", "insurance", 2), "provider_name": "Sun Life", "provider_type": "Life", "coverage_level": "Premium"},
+        {"insurance_id": generate_readable_id("INS", "insurance", 2), "provider_name": "Manulife", "provider_type": "Life", "coverage_level": "Standard"},
+        {"insurance_id": generate_readable_id("INS", "insurance", 2), "provider_name": "AXA", "provider_type": "Health", "coverage_level": "Premium"},
+        {"insurance_id": generate_readable_id("INS", "insurance", 2), "provider_name": "Pacific Cross", "provider_type": "Health", "coverage_level": "Standard"},
     ]
     
     return insurance
@@ -347,7 +329,7 @@ def generate_dim_employees_normalized(num_employees, locations, jobs, banks, ins
     # Get jobs by department using robust lookup
     jobs_by_dept = {}
     for job in jobs:
-        dept_name = dept_reverse_lookup.get(job["department_key"], "Unknown")
+        dept_name = dept_reverse_lookup.get(job["department_id"], "Unknown")
         if dept_name not in jobs_by_dept:
             jobs_by_dept[dept_name] = []
         jobs_by_dept[dept_name].append(job)
@@ -357,8 +339,7 @@ def generate_dim_employees_normalized(num_employees, locations, jobs, banks, ins
         dept_jobs = jobs_by_dept.get(dept_name, [])
         
         for i in range(dept_count):
-            # Generate unique employee key
-            employee_key = generate_unique_id("employee")
+            # Generate unique employee id
             employee_id = generate_readable_id("EMP", "employee", 6)
             # Generate personal information
             gender = random.choice(["Male", "Female", "Non-binary"]) if random.random() < 0.05 else random.choice(["Male", "Female"])
@@ -403,6 +384,18 @@ def generate_dim_employees_normalized(num_employees, locations, jobs, banks, ins
             # Assign random job from department
             job = random.choice(dept_jobs) if dept_jobs else None
             
+            # Ensure job is assigned (fallback if no jobs available for department)
+            if not job:
+                # Create a default job if no department jobs available
+                job = {
+                    "job_id": generate_readable_id("JOB", "job", 5),
+                    "job_title": "General Staff",
+                    "job_level": "Entry",
+                    "department_id": dept_lookup.get(dept_name, "DEPT001"),
+                    "work_setup": "On-site",
+                    "work_type": "Full-time"
+                }
+            
             # Generate government IDs
             tin_number = f"{random.randint(100000000, 999999999)}"
             sss_number = f"{random.randint(1000000000, 9999999999)}"
@@ -415,7 +408,7 @@ def generate_dim_employees_normalized(num_employees, locations, jobs, banks, ins
             ins = random.choice(insurance)
             
             # Employment status (95% active for realistic company with 20% wage ratio)
-            employment_status = random.choices(["Active", "Terminated", "On Leave"], weights=[0.95, 0.04, 0.01])[0]
+            employment_status = random.choices(["Active", "Terminated"], weights=[0.95, 0.05])[0]
             
             # If terminated, generate termination date
             termination_date = None
@@ -439,7 +432,6 @@ def generate_dim_employees_normalized(num_employees, locations, jobs, banks, ins
             emergency_contact_phone = fake.phone_number()
             
             employees.append({
-                "employee_key": employee_key,
                 "employee_id": employee_id,
                 "first_name": first_name,
                 "last_name": last_name,
@@ -451,10 +443,10 @@ def generate_dim_employees_normalized(num_employees, locations, jobs, banks, ins
                 "hire_date": hire_date,
                 "termination_date": termination_date,
                 "employment_status": employment_status,
-                "location_key": location["location_key"],
-                "job_key": job["job_key"] if job else None,
-                "bank_key": bank["bank_key"],
-                "insurance_key": ins["insurance_key"],
+                "location_id": location["location_id"],
+                "job_id": job["job_id"] if job else None,
+                "bank_id": bank["bank_id"],
+                "insurance_id": ins["insurance_id"],
                 "tin_number": tin_number,
                 "sss_number": sss_number,
                 "philhealth_number": philhealth_number,
@@ -755,13 +747,12 @@ def generate_dim_retailers_normalized(num_retailers, locations, start_id=1):
         type_count = int(num_retailers * percentage)
         
         for i in range(type_count):
-            # Generate unique retailer key
-            retailer_key = generate_unique_id("retailer")
+            # Generate unique retailer id
             retailer_id = generate_readable_id("R", "retailer", 5)
             
             # Select location
             location = random.choice(locations)
-            location_key = location["location_key"]
+            location_id = location["location_id"]
             
             # Generate retailer name
             if retailer_type in ["Supermarket", "Hypermarket", "Convenience Store", "Drugstore"]:
@@ -777,11 +768,10 @@ def generate_dim_retailers_normalized(num_retailers, locations, start_id=1):
                 retailer_name = f"{fake.company().split()[0]} {retailer_type}"
             
             retailers.append({
-                "retailer_key": retailer_key,
                 "retailer_id": retailer_id,
                 "retailer_name": retailer_name,
                 "retailer_type": retailer_type,
-                "location_key": location_key,
+                "location_id": location_id,
             })
     
     return retailers
@@ -789,41 +779,41 @@ def generate_dim_retailers_normalized(num_retailers, locations, start_id=1):
 def generate_dim_categories(start_id=1):
     """Generate product categories dimension table"""
     categories = [
-        {"category_key": generate_unique_id("category"), "category_id": generate_readable_id("CAT", "category", 2), "category_name": "Beverages", "category_code": "BEV"},
-        {"category_key": generate_unique_id("category"), "category_id": generate_readable_id("CAT", "category", 2), "category_name": "Food", "category_code": "FOD"},
-        {"category_key": generate_unique_id("category"), "category_id": generate_readable_id("CAT", "category", 2), "category_name": "Personal Care", "category_code": "PER"},
-        {"category_key": generate_unique_id("category"), "category_id": generate_readable_id("CAT", "category", 2), "category_name": "Household", "category_code": "HH"},
-        {"category_key": generate_unique_id("category"), "category_id": generate_readable_id("CAT", "category", 2), "category_name": "Health", "category_code": "HLH"},
+        {"category_id": generate_readable_id("CAT", "category", 2), "category_name": "Beverages", "category_code": "BEV"},
+        {"category_id": generate_readable_id("CAT", "category", 2), "category_name": "Food", "category_code": "FOD"},
+        {"category_id": generate_readable_id("CAT", "category", 2), "category_name": "Personal Care", "category_code": "PER"},
+        {"category_id": generate_readable_id("CAT", "category", 2), "category_name": "Household", "category_code": "HH"},
+        {"category_id": generate_readable_id("CAT", "category", 2), "category_name": "Health", "category_code": "HLH"},
     ]
     return categories
 
 def generate_dim_brands(start_id=1):
     """Generate brands dimension table"""
     brands = [
-        {"brand_key": generate_unique_id("brand"), "brand_id": generate_readable_id("BR", "brand", 3), "brand_name": "Nestlé", "brand_code": "NES"},
-        {"brand_key": generate_unique_id("brand"), "brand_id": generate_readable_id("BR", "brand", 3), "brand_name": "Unilever", "brand_code": "UNI"},
-        {"brand_key": generate_unique_id("brand"), "brand_id": generate_readable_id("BR", "brand", 3), "brand_name": "Procter & Gamble", "brand_code": "P&G"},
-        {"brand_key": generate_unique_id("brand"), "brand_id": generate_readable_id("BR", "brand", 3), "brand_name": "Coca-Cola", "brand_code": "COK"},
-        {"brand_key": generate_unique_id("brand"), "brand_id": generate_readable_id("BR", "brand", 3), "brand_name": "PepsiCo", "brand_code": "PEP"},
-        {"brand_key": generate_unique_id("brand"), "brand_id": generate_readable_id("BR", "brand", 3), "brand_name": "Mondelez", "brand_code": "MON"},
-        {"brand_key": generate_unique_id("brand"), "brand_id": generate_readable_id("BR", "brand", 3), "brand_name": "Johnson & Johnson", "brand_code": "JNJ"},
-        {"brand_key": generate_unique_id("brand"), "brand_id": generate_readable_id("BR", "brand", 3), "brand_name": "Colgate-Palmolive", "brand_code": "COL"},
+        {"brand_id": generate_readable_id("BR", "brand", 3), "brand_name": "Nestlé", "brand_code": "NES"},
+        {"brand_id": generate_readable_id("BR", "brand", 3), "brand_name": "Unilever", "brand_code": "UNI"},
+        {"brand_id": generate_readable_id("BR", "brand", 3), "brand_name": "Procter & Gamble", "brand_code": "P&G"},
+        {"brand_id": generate_readable_id("BR", "brand", 3), "brand_name": "Coca-Cola", "brand_code": "COK"},
+        {"brand_id": generate_readable_id("BR", "brand", 3), "brand_name": "PepsiCo", "brand_code": "PEP"},
+        {"brand_id": generate_readable_id("BR", "brand", 3), "brand_name": "Mondelez", "brand_code": "MON"},
+        {"brand_id": generate_readable_id("BR", "brand", 3), "brand_name": "Johnson & Johnson", "brand_code": "JNJ"},
+        {"brand_id": generate_readable_id("BR", "brand", 3), "brand_name": "Colgate-Palmolive", "brand_code": "COL"},
     ]
     return brands
 
 def generate_dim_subcategories(start_id=1):
     """Generate product subcategories dimension table"""
     subcategories = [
-        {"subcategory_key": generate_unique_id("subcategory"), "subcategory_id": generate_readable_id("SUB", "subcategory", 3), "subcategory_name": "Soft Drinks", "category_code": "BEV"},
-        {"subcategory_key": generate_unique_id("subcategory"), "subcategory_id": generate_readable_id("SUB", "subcategory", 3), "subcategory_name": "Juices", "category_code": "BEV"},
-        {"subcategory_key": generate_unique_id("subcategory"), "subcategory_id": generate_readable_id("SUB", "subcategory", 3), "subcategory_name": "Water", "category_code": "BEV"},
-        {"subcategory_key": generate_unique_id("subcategory"), "subcategory_id": generate_readable_id("SUB", "subcategory", 3), "subcategory_name": "Snacks", "category_code": "FOD"},
-        {"subcategory_key": generate_unique_id("subcategory"), "subcategory_id": generate_readable_id("SUB", "subcategory", 3), "subcategory_name": "Dairy", "category_code": "FOD"},
-        {"subcategory_key": generate_unique_id("subcategory"), "subcategory_id": generate_readable_id("SUB", "subcategory", 3), "subcategory_name": "Bakery", "category_code": "FOD"},
-        {"subcategory_key": generate_unique_id("subcategory"), "subcategory_id": generate_readable_id("SUB", "subcategory", 3), "subcategory_name": "Soap", "category_code": "PER"},
-        {"subcategory_key": generate_unique_id("subcategory"), "subcategory_id": generate_readable_id("SUB", "subcategory", 3), "subcategory_name": "Shampoo", "category_code": "PER"},
-        {"subcategory_key": generate_unique_id("subcategory"), "subcategory_id": generate_readable_id("SUB", "subcategory", 3), "subcategory_name": "Cleaning", "category_code": "HH"},
-        {"subcategory_key": generate_unique_id("subcategory"), "subcategory_id": generate_readable_id("SUB", "subcategory", 3), "subcategory_name": "Vitamins", "category_code": "HLH"},
+        {"subcategory_id": generate_readable_id("SUB", "subcategory", 3), "subcategory_name": "Soft Drinks", "category_code": "BEV"},
+        {"subcategory_id": generate_readable_id("SUB", "subcategory", 3), "subcategory_name": "Juices", "category_code": "BEV"},
+        {"subcategory_id": generate_readable_id("SUB", "subcategory", 3), "subcategory_name": "Water", "category_code": "BEV"},
+        {"subcategory_id": generate_readable_id("SUB", "subcategory", 3), "subcategory_name": "Snacks", "category_code": "FOD"},
+        {"subcategory_id": generate_readable_id("SUB", "subcategory", 3), "subcategory_name": "Dairy", "category_code": "FOD"},
+        {"subcategory_id": generate_readable_id("SUB", "subcategory", 3), "subcategory_name": "Bakery", "category_code": "FOD"},
+        {"subcategory_id": generate_readable_id("SUB", "subcategory", 3), "subcategory_name": "Soap", "category_code": "PER"},
+        {"subcategory_id": generate_readable_id("SUB", "subcategory", 3), "subcategory_name": "Shampoo", "category_code": "PER"},
+        {"subcategory_id": generate_readable_id("SUB", "subcategory", 3), "subcategory_name": "Cleaning", "category_code": "HH"},
+        {"subcategory_id": generate_readable_id("SUB", "subcategory", 3), "subcategory_name": "Vitamins", "category_code": "HLH"},
     ]
     return subcategories
 
@@ -905,12 +895,11 @@ def generate_dim_products(num_products, categories, brands, subcategories, start
         status = "Delisted" if random.random() < delist_probability else "Active"
         
         products.append({
-            "product_key": generate_unique_id("product"),
             "product_id": generate_readable_id("P", "product", 4),
             "product_name": product["name"],
-            "category_key": category_ref["category_key"],
-            "brand_key": brand_ref["brand_key"],
-            "subcategory_key": subcategory_ref["subcategory_key"],
+            "category_id": category_ref["category_id"],
+            "brand_id": brand_ref["brand_id"],
+            "subcategory_id": subcategory_ref["subcategory_id"],
             "wholesale_price": product["wholesale"],
             "retail_price": product["retail"],
             "status": status,
@@ -1004,7 +993,6 @@ def generate_dim_campaigns(start_id=1):
     
     for i, campaign in enumerate(campaign_data):
         campaigns.append({
-            "campaign_key": generate_unique_id("campaign"),
             "campaign_id": generate_readable_id("C", "campaign", 4),
             "campaign_name": campaign["name"],
             "campaign_type": campaign["type"],
@@ -1023,17 +1011,17 @@ def validate_relationships(employees, products, retailers, campaigns, locations,
     issues = []
     
     # Create lookup dictionaries with proper type handling for BigQuery data
-    location_keys = {int(loc["location_key"]) for loc in locations}
-    department_keys = {int(dept["department_key"]) for dept in departments}
-    job_keys = {int(job["job_key"]) for job in jobs}
-    bank_keys = {int(bank["bank_key"]) for bank in banks}
-    insurance_keys = {int(ins["insurance_key"]) for ins in insurance}
-    product_keys = {int(prod["product_key"]) for prod in products}
-    retailer_keys = {int(ret["retailer_key"]) for ret in retailers}
-    campaign_keys = {int(camp["campaign_key"]) for camp in campaigns}
-    category_keys = {int(cat["category_key"]) for cat in categories}
-    brand_keys = {int(brand["brand_key"]) for brand in brands}
-    subcategory_keys = {int(sub["subcategory_key"]) for sub in subcategories}
+    location_ids = {loc["location_id"] for loc in locations}
+    department_ids = {dept["department_id"] for dept in departments}
+    job_ids = {job["job_id"] for job in jobs}
+    bank_ids = {bank["bank_id"] for bank in banks}
+    insurance_ids = {ins["insurance_id"] for ins in insurance}
+    product_ids = {prod["product_id"] for prod in products}
+    retailer_ids = {ret["retailer_id"] for ret in retailers}
+    campaign_ids = {camp["campaign_id"] for camp in campaigns}
+    category_ids = {cat["category_id"] for cat in categories}
+    brand_ids = {brand["brand_id"] for brand in brands}
+    subcategory_ids = {sub["subcategory_id"] for sub in subcategories}
     
     # Helper function to safely convert BigQuery values to int
     def safe_int(value):
@@ -1047,52 +1035,52 @@ def validate_relationships(employees, products, retailers, campaigns, locations,
     
     # Validate employee relationships with type conversion
     for emp in employees:
-        emp_key = emp.get('employee_key')
+        emp_id = emp.get('employee_id')
         
         # Skip validation for terminated employees
         if emp.get('employment_status') != 'Active':
             continue
             
         # Convert BigQuery values to int for comparison
-        location_key = safe_int(emp.get("location_key"))
-        job_key = safe_int(emp.get("job_key"))
-        bank_key = safe_int(emp.get("bank_key"))
-        insurance_key = safe_int(emp.get("insurance_key"))
+        location_id = emp.get("location_id")
+        job_id = emp.get("job_id")
+        bank_id = emp.get("bank_id")
+        insurance_id = emp.get("insurance_id")
         
         # Only validate if keys are not None
-        if location_key is not None and location_key not in location_keys:
-            issues.append(f"Employee {emp_key}: Invalid location_key {location_key}")
-        if job_key is not None and job_key not in job_keys:
-            issues.append(f"Employee {emp_key}: Invalid job_key {job_key}")
-        if bank_key is not None and bank_key not in bank_keys:
-            issues.append(f"Employee {emp_key}: Invalid bank_key {bank_key}")
-        if insurance_key is not None and insurance_key not in insurance_keys:
-            issues.append(f"Employee {emp_key}: Invalid insurance_key {insurance_key}")
+        if location_id is not None and location_id not in location_ids:
+            issues.append(f"Employee {emp_id}: Invalid location_id {location_id}")
+        if job_id is not None and job_id not in job_ids:
+            issues.append(f"Employee {emp_id}: Invalid job_id {job_id}")
+        if bank_id is not None and bank_id not in bank_ids:
+            issues.append(f"Employee {emp_id}: Invalid bank_id {bank_id}")
+        if insurance_id is not None and insurance_id not in insurance_ids:
+            issues.append(f"Employee {emp_id}: Invalid insurance_id {insurance_id}")
     
     # Validate job department relationships
     for job in jobs:
-        dept_key = safe_int(job.get("department_key"))
-        if dept_key is not None and dept_key not in department_keys:
-            issues.append(f"Job {job['job_key']}: Invalid department_key {dept_key}")
+        dept_id = job.get("department_id")
+        if dept_id is not None and dept_id not in department_ids:
+            issues.append(f"Job {job['job_id']}: Invalid department_id {dept_id}")
     
     # Validate retailer relationships
     for ret in retailers:
-        loc_key = safe_int(ret.get("location_key"))
-        if loc_key is not None and loc_key not in location_keys:
-            issues.append(f"Retailer {ret['retailer_key']}: Invalid location_key {loc_key}")
+        loc_id = ret.get("location_id")
+        if loc_id is not None and loc_id not in location_ids:
+            issues.append(f"Retailer {ret['retailer_id']}: Invalid location_id {loc_id}")
     
     # Validate product relationships (NEW)
     for prod in products:
-        category_key = safe_int(prod.get("category_key"))
-        brand_key = safe_int(prod.get("brand_key"))
-        subcategory_key = safe_int(prod.get("subcategory_key"))
+        category_id = prod.get("category_id")
+        brand_id = prod.get("brand_id")
+        subcategory_id = prod.get("subcategory_id")
         
-        if category_key is not None and category_key not in category_keys:
-            issues.append(f"Product {prod['product_key']}: Invalid category_key {category_key}")
-        if brand_key is not None and brand_key not in brand_keys:
-            issues.append(f"Product {prod['product_key']}: Invalid brand_key {brand_key}")
-        if subcategory_key is not None and subcategory_key not in subcategory_keys:
-            issues.append(f"Product {prod['product_key']}: Invalid subcategory_key {subcategory_key}")
+        if category_id is not None and category_id not in category_ids:
+            issues.append(f"Product {prod['product_id']}: Invalid category_id {category_id}")
+        if brand_id is not None and brand_id not in brand_ids:
+            issues.append(f"Product {prod['product_id']}: Invalid brand_id {brand_id}")
+        if subcategory_id is not None and subcategory_id not in subcategory_ids:
+            issues.append(f"Product {prod['product_id']}: Invalid subcategory_id {subcategory_id}")
     
     if issues:
         print(f"Found {len(issues)} relationship issues:")
@@ -1220,8 +1208,8 @@ def generate_fact_sales(employees, products, retailers, campaigns, target_amount
         end_date = start_date
     
     # Create safe lookup dictionaries to prevent relationship errors
-    retailer_lookup = {ret["retailer_key"]: ret for ret in retailers}
-    campaign_lookup = {camp["campaign_key"]: camp for camp in campaigns}
+    retailer_lookup = {ret["retailer_id"]: ret for ret in retailers}
+    campaign_lookup = {camp["campaign_id"]: camp for camp in campaigns}
     
     # Validate we have enough records for relationships
     if not retailers:
@@ -1293,8 +1281,8 @@ def generate_fact_sales(employees, products, retailers, campaigns, target_amount
             continue
         
         # Create lookup dictionaries for this date
-        employee_lookup = {emp["employee_key"]: emp for emp in available_employees}
-        product_lookup = {prod["product_key"]: prod for prod in available_products}
+        employee_lookup = {emp["employee_id"]: emp for emp in available_employees}
+        product_lookup = {prod["product_id"]: prod for prod in available_products}
         
         # Calculate progress through the period (0.0 to 1.0)
         progress = (current_date - start_date).days / total_days
@@ -1356,12 +1344,10 @@ def generate_fact_sales(employees, products, retailers, campaigns, target_amount
             # Use current timestamp in milliseconds for additional uniqueness
             timestamp_ms = int((datetime.now().timestamp() * 1000) % 1000)
             sales.append({
-                "sale_key": generate_unique_sale_key(str(current_date), product["product_key"], employee["employee_key"], retailer["retailer_key"], sale_sequence, timestamp_ms),
+                "sale_id": generate_unique_sale_key(),
                 "sale_date": current_date,
-                "product_key": product["product_key"],
-                "employee_key": employee["employee_key"],
-                "retailer_key": retailer["retailer_key"],
-                "campaign_key": campaign["campaign_key"] if campaign else None,
+                "product_id": product["product_id"],
+                "retailer_id": retailer["retailer_id"],
                 "case_quantity": case_quantity,
                 "unit_price": unit_price,
                 "discount_percent": discount_percent,
