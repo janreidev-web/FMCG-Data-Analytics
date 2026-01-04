@@ -334,6 +334,7 @@ def main():
         # Generate fact tables
         if not table_has_data(client, FACT_SALES):
             # Initial run: generate historical sales
+            from datetime import timedelta  # Ensure timedelta is available
             yesterday = date.today() - timedelta(days=1)
             logger.info(f"INITIAL_SALES_AMOUNT from config: {INITIAL_SALES_AMOUNT:,}")
             logger.info(f"Generating initial sales fact targeting ₱{INITIAL_SALES_AMOUNT:,.0f} (2015-01-01 to {yesterday})...")
@@ -444,13 +445,13 @@ def main():
                 marketing_table_exists = False
             except Exception as e:
                 logger.warning(f"Could not drop marketing costs table: {e}")
-        
         # Force regenerate marketing costs if it's missing or empty
         if not marketing_table_exists:
             logger.info("Generating marketing costs fact...")
             try:
                 # Always use historical range for marketing costs to match campaigns
                 # Marketing costs should cover the full campaign period regardless of sales table status
+                from datetime import timedelta  # Ensure timedelta is available
                 start_date = date(2015, 1, 1)
                 end_date = date.today() - timedelta(days=1)
                 
