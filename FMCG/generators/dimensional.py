@@ -39,7 +39,15 @@ def generate_unique_id(entity_type, use_timestamp=True):
         unique_str = f"{ID_GENERATOR_STATE['session_id']}{entity_type}{timestamp_ms}{sequence}"
         # Create hash to ensure reasonable length
         unique_hash = hashlib.md5(unique_str.encode()).hexdigest()[:12]
-        return int(unique_hash, 16)
+        unique_id = int(unique_hash, 16)
+        
+        # Ensure it fits in 19 digits (BigQuery INTEGER limit: 2^63-1 = 9,223,372,036,854,775,807)
+        max_safe_int = 9223372036854775807  # Max 64-bit signed integer
+        if unique_id > max_safe_int:
+            # If too large, take modulo to fit within range
+            unique_id = unique_id % max_safe_int
+        
+        return unique_id
     else:
         # For cases where we want more readable IDs
         return sequence
@@ -72,9 +80,19 @@ def generate_unique_sale_key(sale_date, product_key, employee_key, retailer_key,
 
 def generate_unique_wage_key(employee_key, effective_date, sequence_num):
     """Generate unique wage key using employee + date + sequence"""
-    # Format: employee_key (6 digits) + YYYYMMDD + sequence (4 digits)
+    # Use hash-based approach for large employee keys
     date_str = effective_date.strftime("%Y%m%d")
-    return int(f"{employee_key:06d}{date_str}{sequence_num:04d}")
+    combined_str = f"{employee_key}{date_str}{sequence_num}"
+    # Create hash to ensure reasonable length and fit within BigQuery limits
+    unique_hash = hashlib.md5(combined_str.encode()).hexdigest()[:12]
+    unique_id = int(unique_hash, 16)
+    
+    # Ensure it fits in 19 digits (BigQuery INTEGER limit)
+    max_safe_int = 9223372036854775807
+    if unique_id > max_safe_int:
+        unique_id = unique_id % max_safe_int
+    
+    return unique_id
 
 def generate_unique_cost_key(cost_date, category_code, sequence_num):
     """Generate unique cost key using date + category + sequence"""
@@ -104,9 +122,19 @@ def generate_unique_marketing_cost_key(campaign_key, cost_date, category_code, s
 
 def generate_unique_employee_fact_key(employee_key, effective_date, sequence_num):
     """Generate unique employee fact key using employee + date + sequence"""
-    # Format: employee_key (6 digits) + YYYYMMDD + sequence (4 digits)
+    # Use hash-based approach for large employee keys
     date_str = effective_date.strftime("%Y%m%d")
-    return int(f"{employee_key:06d}{date_str}{sequence_num:04d}")
+    combined_str = f"{employee_key}{date_str}{sequence_num}"
+    # Create hash to ensure reasonable length and fit within BigQuery limits
+    unique_hash = hashlib.md5(combined_str.encode()).hexdigest()[:12]
+    unique_id = int(unique_hash, 16)
+    
+    # Ensure it fits in 19 digits (BigQuery INTEGER limit)
+    max_safe_int = 9223372036854775807
+    if unique_id > max_safe_int:
+        unique_id = unique_id % max_safe_int
+    
+    return unique_id
 
 def generate_dim_locations(num_locations=500, start_id=1):
     """Generate locations dimension table with normalized address data"""
