@@ -1018,7 +1018,7 @@ def generate_dim_campaigns(start_id=1):
 
 def validate_relationships(employees, products, retailers, campaigns, locations, departments, jobs, banks, insurance, categories, brands, subcategories):
     """Validate all foreign key relationships for referential integrity"""
-    print("🔍 Validating table relationships...")
+    print("Validating table relationships...")
     
     issues = []
     
@@ -1095,14 +1095,14 @@ def validate_relationships(employees, products, retailers, campaigns, locations,
             issues.append(f"Product {prod['product_key']}: Invalid subcategory_key {subcategory_key}")
     
     if issues:
-        print(f"❌ Found {len(issues)} relationship issues:")
+        print(f"Found {len(issues)} relationship issues:")
         for issue in issues[:10]:  # Show first 10 issues
             print(f"  - {issue}")
         if len(issues) > 10:
             print(f"  - ... and {len(issues) - 10} more issues")
         return False
     else:
-        print("✅ All relationships validated successfully!")
+        print("All relationships validated successfully!")
         return True
 
 def generate_daily_sales_with_delivery_updates(employees, products, retailers, campaigns, target_amount, start_date=None, end_date=None, start_id=1):

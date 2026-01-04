@@ -64,7 +64,7 @@ def log_progress(step, total_steps, message, start_time=None):
         logger.info(f"[{step}/{total_steps}] {progress:.1f}% - {message} (Elapsed: {elapsed:.1f}s)")
     else:
         # Simplified progress for GitHub Actions
-        logger.info(f"✅ {message} [{step}/{total_steps}]")
+        logger.info(f"[OK] {message} [{step}/{total_steps}]")
 
 def is_last_day_of_month():
     """Check if today is the last day of the month"""
@@ -91,9 +91,9 @@ def main():
     
     try:
         # Initialize BigQuery client
-        logger.info("🔐 Connecting to Google Cloud...")
+        logger.info("Connecting to Google Cloud...")
         client = get_bigquery_client(PROJECT_ID)
-        logger.info(f"✅ Connected to: {PROJECT_ID}")
+        logger.info(f"Connected to: {PROJECT_ID}")
         
         # Check if this is a scheduled run
         is_scheduled = os.environ.get("SCHEDULED_RUN", "false").lower() == "true"
@@ -101,14 +101,14 @@ def main():
         
         if is_scheduled:
             if is_last_day:
-                logger.info("📅 Monthly update - Full refresh")
+                logger.info("Monthly update - Full refresh")
             else:
-                logger.info("📊 Daily run - Sales data only")
+                logger.info("Daily run - Sales data only")
         else:
-            logger.info("🔧 Manual run - Full refresh")
+            logger.info("Manual run - Full refresh")
         
         if is_scheduled and not table_has_data(client, FACT_SALES):
-            logger.warning("⚠ SCHEDULED RUN SKIPPED: No initial data found.")
+            logger.warning("SCHEDULED RUN SKIPPED: No initial data found.")
             logger.warning("Please run manually first to generate the initial dataset.")
             logger.info("="*60 + "\n")
             sys.exit(0)
@@ -118,19 +118,19 @@ def main():
         should_update_dimensions = not is_scheduled or is_last_day
         
         if should_update_dimensions:
-            logger.info("🏗️  Building dimensions...")
+            logger.info("Building dimensions...")
             dim_start = time.time()
         else:
-            logger.info("⏭️  Skipping dimensions (daily run)")
+            logger.info("Skipping dimensions (daily run)")
         
         if should_update_dimensions:
             # Generate core dimensions first (dependencies)
             if not table_has_data(client, DIM_LOCATIONS):
-                logger.info("📍 Creating locations...")
+                logger.info("Creating locations...")
                 locations = generate_dim_locations(num_locations=500)
                 append_df_bq(client, pd.DataFrame(locations), DIM_LOCATIONS)
             else:
-                logger.info("✅ Locations ready")
+                logger.info("Locations ready")
                 # Load existing locations for dependency
                 locations_df = client.query(f"SELECT * FROM `{DIM_LOCATIONS}`").to_dataframe()
                 locations = locations_df.to_dict("records")
@@ -227,38 +227,38 @@ def main():
                 logger.info("Employees dimension already exists. Skipping.")
             
             if not table_has_data(client, DIM_RETAILERS):
-                logger.info("🏪 Creating retailers...")
+                logger.info("Creating retailers...")
                 retailers = generate_dim_retailers_normalized(
                     num_retailers=INITIAL_RETAILERS, 
                     locations=locations
                 )
                 logger.info(f"Generated {len(retailers)} retailers, starting BigQuery upload...")
                 append_df_bq(client, pd.DataFrame(retailers), DIM_RETAILERS)
-                logger.info("✅ Retailers completed successfully")
+                logger.info("Retailers completed successfully")
             else:
-                logger.info("✅ Retailers ready")
+                logger.info("Retailers ready")
                 # Load existing retailers for dependency
                 retailers_df = client.query(f"SELECT * FROM `{DIM_RETAILERS}`").to_dataframe()
                 retailers = retailers_df.to_dict("records")
             
             if not table_has_data(client, DIM_CAMPAIGNS):
-                logger.info("📢 Creating campaigns...")
+                logger.info("Creating campaigns...")
                 campaigns = generate_dim_campaigns()
                 append_df_bq(client, pd.DataFrame(campaigns), DIM_CAMPAIGNS)
             else:
-                logger.info("✅ Campaigns ready")
+                logger.info("Campaigns ready")
                 # Load existing campaigns for dependency
                 campaigns_df = client.query(f"SELECT * FROM `{DIM_CAMPAIGNS}`").to_dataframe()
                 campaigns = campaigns_df.to_dict("records")
             
             if not table_has_data(client, DIM_DATES):
-                logger.info("📅 Creating dates...")
+                logger.info("Creating dates...")
                 dates = generate_dim_dates()
                 append_df_bq(client, pd.DataFrame(dates), DIM_DATES)
             else:
-                logger.info("✅ Dates ready")
+                logger.info("Dates ready")
             
-            logger.info("🎉 All dimensions completed successfully!")
+            logger.info("All dimensions completed successfully!")
             
             # Generate employee facts if employees exist
             if table_has_data(client, DIM_EMPLOYEES):
@@ -373,12 +373,12 @@ def main():
             campaigns = campaigns_df.to_dict("records")
             
             # Validate all relationships before fact table generation
-            logger.info("🔍 Validating table relationships...")
+            logger.info("Validating table relationships...")
             if not validate_relationships(employees, products, retailers, campaigns, locations, departments, jobs, banks, insurance, categories, brands, subcategories):
-                logger.error("❌ Relationship validation failed! Skipping fact table generation.")
+                logger.error("Relationship validation failed! Skipping fact table generation.")
                 return
             else:
-                logger.info("✅ All relationships validated successfully!")
+                logger.info("All relationships validated successfully!")
         except Exception as e:
             if "readsessions.create" in str(e):
                 logger.warning(f"BigQuery read sessions permission error. Using alternative approach...")
@@ -444,13 +444,13 @@ def main():
             sales_target = DAILY_SALES_AMOUNT
             start_date = yesterday
             end_date = yesterday
-            logger.info(f"📅 Daily run: Generating ₱{sales_target:,.0f} in sales for {yesterday}...")
+            logger.info(f"Daily run: Generating ₱{sales_target:,.0f} in sales for {yesterday}...")
         else:
             # Manual run: generate full historical data (₱8B total)
             sales_target = INITIAL_SALES_AMOUNT
             start_date = date(2015, 1, 1)
             end_date = yesterday
-            logger.info(f"🔧 Manual run: Generating ₱{sales_target:,.0f} in total sales from {start_date} to {yesterday}...")
+            logger.info(f"Manual run: Generating ₱{sales_target:,.0f} in total sales from {start_date} to {yesterday}...")
         
         logger.info(f"INITIAL_SALES_AMOUNT from config: {INITIAL_SALES_AMOUNT:,}")
         logger.info(f"DAILY_SALES_AMOUNT from config: {DAILY_SALES_AMOUNT:,}")
@@ -587,12 +587,12 @@ def main():
                 method1_success = execute_method_1_overwrite(client, PROJECT_ID, DATASET, FACT_SALES)
                 
                 if method1_success:
-                    logger.info("✅ Delivery statuses updated successfully")
+                    logger.info("Delivery statuses updated successfully")
                     
                     # Get updated status summary
                     summary_df = get_delivery_status_summary(client, PROJECT_ID, DATASET)
                     if not summary_df.empty:
-                        logger.info("📊 Current Delivery Status Summary:")
+                        logger.info("Current Delivery Status Summary:")
                         for _, row in summary_df.iterrows():
                             logger.info(f"   {row['current_delivery_status']}: {row['order_count']:,} orders (PHP {row['total_value']:,.2f})")
                 else:
@@ -606,14 +606,14 @@ def main():
                         # Create current status view
                         view_query = create_current_delivery_status_view(PROJECT_ID, DATASET, FACT_SALES, 'delivery_status_updates')
                         client.query(view_query).result()
-                        logger.info("✅ Delivery status updates appended and view created")
+                        logger.info("Delivery status updates appended and view created")
                     else:
                         logger.warning("All update methods failed, continuing with run...")
                         
             except Exception as e:
                 logger.warning(f"Could not update delivery statuses: {e}")
                 logger.info("Continuing with scheduled run...")
-                logger.info("💡 Tip: You can manually update statuses using BigQuery Console with WRITE_TRUNCATE")
+                logger.info("Tip: You can manually update statuses using BigQuery Console with WRITE_TRUNCATE")
         
         # Generate other fact tables (only on manual runs or last day of month)
         should_update_facts = not is_scheduled or is_last_day

@@ -306,7 +306,7 @@ def update_delivery_status(client, fact_sales_table):
                 days_active = (today - order_date).days
                 logger.info(f"   Order #{order['sale_key']}: PHP {order['total_amount']:,.2f} ({days_active} days ago)")
         else:
-            logger.info("✅ No active orders found. All recent orders are delivered.")
+            logger.info("No active orders found. All recent orders are delivered.")
         
         # Overall delivery status summary
         overall_summary = result_df.groupby('delivery_status').agg({
