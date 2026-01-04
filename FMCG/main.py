@@ -266,21 +266,12 @@ def main():
                 employees_df = pd.DataFrame(employees)
                 
                 # Handle all date fields - convert to datetime with proper null handling
-                date_columns = ['hire_date', 'birth_date']
+                date_columns = ['hire_date', 'birth_date', 'termination_date']
                 for col in date_columns:
                     if col in employees_df.columns:
                         # Convert to datetime, coercing errors to NaT
                         employees_df[col] = pd.to_datetime(employees_df[col], errors='coerce')
                         logger.info(f"Converted {col}: {employees_df[col].dtype}, null count: {employees_df[col].isna().sum()}")
-                
-                # Handle termination_date separately - only keep for terminated employees
-                if 'termination_date' in employees_df.columns:
-                    # Convert to datetime first
-                    employees_df['termination_date'] = pd.to_datetime(employees_df['termination_date'], errors='coerce')
-                    # For active employees, set to NaT
-                    active_mask = employees_df['employment_status'] == 'Active'
-                    employees_df.loc[active_mask, 'termination_date'] = pd.NaT
-                    logger.info(f"termination_date: {employees_df['termination_date'].dtype}, null count: {employees_df['termination_date'].isna().sum()}")
                 
                 # Handle job_id - ensure it's never empty, use first job as default
                 if 'job_id' in employees_df.columns:
