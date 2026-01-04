@@ -1174,18 +1174,22 @@ def generate_fact_sales(employees, products, retailers, campaigns, target_amount
     growth_end = 1.3   # End at 130% of target (to exceed ₱40B total)
     
     # Find the earliest date when we have both employees and products available
+    # Use 2015-01-01 as minimum for historical data, but consider actual availability
+    historical_start_date = date(2015, 1, 1)
     earliest_employee_date = min(e.get('hire_date', date.today()) for e in employees)
     earliest_product_date = min(p.get('created_date', date.today()) for p in products)
-    earliest_available_date = max(earliest_employee_date, earliest_product_date)
+    earliest_available_date = max(historical_start_date, earliest_employee_date, earliest_product_date)
     
     # Start sales from the later of: requested start_date or earliest_available_date
     actual_start_date = max(start_date, earliest_available_date)
     
-    # Check if the adjusted start date is after the end date
+    # For historical data generation, if no employees/products were available in the entire range,
+    # create some with earlier dates to ensure data generation works
     if actual_start_date > end_date:
-        print(f"Cannot generate sales: adjusted start date {actual_start_date} is after end date {end_date}")
-        print(f"No employees or products were available in the requested date range")
-        return []
+        print(f"Warning: No employees or products available in requested date range")
+        print(f"Adjusting to generate data from {start_date} to {end_date} anyway")
+        # Force generation by using the requested dates
+        actual_start_date = start_date
     
     if actual_start_date != start_date:
         print(f"Adjusted start date from {start_date} to {actual_start_date} to ensure available employees and products")
@@ -1197,12 +1201,17 @@ def generate_fact_sales(employees, products, retailers, campaigns, target_amount
     print(f"Growth pattern: {growth_start*100:.0f}% to {growth_end*100:.0f}% over period")
     
     while current_date <= end_date and current_amount < target_amount * 1.4:  # Allow up to 140% of target
-        # Filter employees available on this date (hired before or on current_date, not terminated before current_date)
+        # Filter employees available on this date (hired before or on current_date)
+        # For historical data, be more flexible - if no employees available, use all active employees
         available_employees = [
             e for e in employees 
-            if e.get('hire_date') <= current_date 
+            if e.get('hire_date') and e.get('hire_date') <= current_date 
             and (e.get('employment_status') != 'Terminated' or (e.get('termination_date') and e.get('termination_date') >= current_date))
         ]
+        
+        # If no employees available for historical dates, use all active employees
+        if not available_employees and current_date.year <= 2020:
+            available_employees = [e for e in employees if e.get('employment_status') == 'Active']
         
         # Filter products available on this date (created before or on current_date)
         # For historical sales, products can be sold if they were created before the sale date
@@ -1212,7 +1221,11 @@ def generate_fact_sales(employees, products, retailers, campaigns, target_amount
             if p.get('created_date') and p.get('created_date') <= current_date
         ]
         
-        # If no employees or products available, skip this day (shouldn't happen but safety check)
+        # If no products available for historical dates, use all active products
+        if not available_products and current_date.year <= 2020:
+            available_products = [p for p in products if p.get('status') == 'Active']
+        
+        # If still no employees or products available, skip this day
         if not available_employees or not available_products:
             current_date += timedelta(days=1)
             continue

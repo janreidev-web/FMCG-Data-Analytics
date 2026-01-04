@@ -73,8 +73,17 @@ def append_df_bq_safe(client, df, table_id, id_column, write_disposition="WRITE_
             logger.info(f"Table {table_id} already exists")
         except Exception:
             logger.info(f"Table {table_id} doesn't exist, creating empty table...")
-            # Create table with minimal schema - this will be handled by the schema creation in main script
-            logger.warning(f"Cannot create empty table {table_id} - schema must be defined first")
+            # Import schema for fact_sales table
+            try:
+                from schema import FACT_SALES_SCHEMA
+                # Create table with schema
+                table = bigquery.Table(table_id, schema=FACT_SALES_SCHEMA)
+                client.create_table(table)
+                logger.info(f"✓ Created empty table {table_id} with schema")
+            except ImportError:
+                logger.warning(f"Cannot create empty table {table_id} - schema not available")
+            except Exception as e:
+                logger.error(f"Failed to create table {table_id}: {e}")
         return 0
     
     logger.info(f"Checking for duplicates in {table_id} using {id_column}...")
