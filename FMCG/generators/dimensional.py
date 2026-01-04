@@ -587,7 +587,7 @@ def generate_fact_employee_wages(employees, jobs, departments=None, start_date=N
             
             wage_sequence += 1
             wages.append({
-                "wage_key": generate_unique_wage_key(employee["employee_id"], effective_date, wage_sequence),
+                "wage_id": generate_unique_wage_key(employee["employee_id"], effective_date, wage_sequence),
                 "employee_id": employee["employee_id"],
                 "effective_date": effective_date,
                 "job_title": job["job_title"],
@@ -622,30 +622,30 @@ def generate_fact_employees(employees, jobs, start_id=1):
         if not job:
             continue
         
-        # Performance metrics
+        # Performance metrics - ensure no empty values
         performance_rating = random.choices([5, 4, 3, 2, 1], weights=[0.15, 0.35, 0.30, 0.15, 0.05])[0]
         last_review_date = fake.date_between_dates(date_start=employee["hire_date"], date_end=date.today())
         promotion_eligible = performance_rating >= 4 and random.random() < 0.6
         
-        # Work metrics
+        # Work metrics - ensure no empty values
         years_of_service = (date.today() - employee["hire_date"]).days // 365
-        attendance_rate = random.uniform(0.85, 0.98)
+        attendance_rate = round(random.uniform(0.85, 0.98), 3)
         overtime_hours_monthly = random.randint(0, 20) if job["work_type"] == "Full-time" else 0
-        productivity_score = random.randint(60, 100) if random.random() < 0.8 else None
+        productivity_score = random.randint(60, 100)  # Always generate a value
         
-        # Engagement metrics
+        # Engagement metrics - ensure no empty values
         engagement_score = random.randint(1, 10)
         satisfaction_index = random.randint(60, 95)
-        retention_risk_score = random.randint(1, 10) if satisfaction_index < 75 else None
+        retention_risk_score = random.randint(1, 10) if satisfaction_index < 75 else 1  # Default to low risk
         
-        # Development metrics
+        # Development metrics - ensure no empty values
         training_hours_completed = random.randint(0, 120)
         certifications_count = random.randint(0, 5)
-        skill_gap_score = random.randint(1, 10) if random.random() < 0.3 else None
+        skill_gap_score = random.randint(1, 10)  # Always generate a value
         
-        # Benefits metrics
+        # Benefits metrics - ensure no empty values
         benefit_enrollment_date = employee["hire_date"]
-        health_utilization_rate = round(random.uniform(0.1, 0.8), 3) if random.random() < 0.7 else None
+        health_utilization_rate = round(random.uniform(0.1, 0.8), 3)  # Always generate a value
         
         # Leave metrics
         vacation_leave_balance = random.randint(0, 15)
@@ -655,7 +655,7 @@ def generate_fact_employees(employees, jobs, start_id=1):
         fact_sequence += 1
         effective_date = date.today()
         employee_facts.append({
-            "employee_fact_key": generate_unique_employee_fact_key(employee["employee_id"], effective_date, fact_sequence),
+            "employee_fact_id": generate_unique_employee_fact_key(employee["employee_id"], effective_date, fact_sequence),
             "employee_id": employee["employee_id"],
             "effective_date": effective_date,
             
@@ -722,7 +722,7 @@ def generate_fact_inventory(products, start_id=1):
             
             inventory_sequence += 1
             inventory.append({
-                "inventory_key": generate_unique_inventory_key(product["product_id"], location_id, inventory_date, inventory_sequence),
+                "inventory_id": generate_unique_inventory_key(product["product_id"], location_id, inventory_date, inventory_sequence),
                 "inventory_date": inventory_date,
                 "product_id": product["product_id"],
                 "location_id": location_id,
@@ -951,7 +951,7 @@ def generate_dim_dates(start_id=1):
         is_weekend = day_of_week_number in {6, 7}  # Saturday=6, Sunday=7
         
         dates.append({
-            "date_key": generate_unique_id("date"),
+            "date_id": generate_unique_id("date"),
             "date": current_date,
             "year": year,
             "year_month": year_month,
@@ -1191,7 +1191,7 @@ def generate_daily_sales_with_delivery_updates(employees, products, retailers, c
         # Use current timestamp in milliseconds for additional uniqueness
         timestamp_ms = int((datetime.now().timestamp() * 1000) % 1000)
         sales.append({
-            "sale_key": generate_unique_sale_key(),
+            "sale_id": generate_readable_id("SAL", "sale", 6),
             "sale_date": start_date,
             "product_id": product["product_id"],
             "retailer_id": retailer["retailer_id"],
@@ -1361,7 +1361,7 @@ def generate_fact_sales(employees, products, retailers, campaigns, target_amount
             # Use current timestamp in milliseconds for additional uniqueness
             timestamp_ms = int((datetime.now().timestamp() * 1000) % 1000)
             sales.append({
-                "sale_id": generate_unique_sale_key(),
+                "sale_id": generate_readable_id("SAL", "sale", 6),
                 "sale_date": current_date,
                 "product_id": product["product_id"],
                 "retailer_id": retailer["retailer_id"],
@@ -1432,7 +1432,7 @@ def generate_fact_operating_costs(target_amount, start_date=None, end_date=None,
                 
                 cost_sequence += 1
                 costs.append({
-                    "cost_key": generate_unique_cost_key(current_date, category, cost_sequence),
+                    "cost_id": generate_unique_cost_key(current_date, category, cost_sequence),
                     "cost_date": current_date,
                     "category": category,
                     "cost_type": cost_type,
@@ -1471,7 +1471,7 @@ def generate_fact_marketing_costs(campaigns, target_amount, start_date=None, end
             for category in cost_categories:
                 cost_sequence += 1
                 costs.append({
-                    "marketing_cost_key": generate_unique_marketing_cost_key(None, current_date, category, cost_sequence),
+                    "marketing_cost_id": generate_unique_marketing_cost_key(None, current_date, category, cost_sequence),
                     "cost_date": current_date,
                     "campaign_id": None,
                     "campaign_type": "General",
@@ -1498,7 +1498,7 @@ def generate_fact_marketing_costs(campaigns, target_amount, start_date=None, end
                     for category in cost_categories:
                         cost_sequence += 1
                         costs.append({
-                            "marketing_cost_key": generate_unique_marketing_cost_key(campaign["campaign_id"], current_date, category, cost_sequence),
+                            "marketing_cost_id": generate_unique_marketing_cost_key(campaign["campaign_id"], current_date, category, cost_sequence),
                             "cost_date": current_date,
                             "campaign_id": campaign["campaign_id"],
                             "campaign_type": campaign["campaign_type"],
