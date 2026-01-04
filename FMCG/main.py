@@ -24,9 +24,14 @@ from generators.dimensional import (
     generate_dim_products, generate_dim_employees_normalized, generate_dim_locations,
     generate_dim_departments, generate_dim_jobs, generate_dim_banks, generate_dim_insurance,
     generate_fact_employees, generate_fact_employee_wages, generate_dim_retailers_normalized,
-    generate_dim_campaigns, generate_fact_sales,
+    generate_dim_campaigns, generate_fact_sales, generate_daily_sales_with_delivery_updates,
     generate_fact_operating_costs, generate_fact_inventory, generate_fact_marketing_costs,
     generate_dim_dates, validate_relationships
+)
+from generators.bigquery_updates import (
+    execute_method_1_overwrite, execute_method_2_append, execute_method_3_staging,
+    create_current_delivery_status_view, get_delivery_status_summary,
+    compare_update_methods
 )
 
 # Configure enhanced logging
@@ -44,6 +49,13 @@ def log_progress(step, total_steps, message, start_time=None):
     progress = (step / total_steps) * 100
     elapsed = time.time() - start_time if start_time else 0
     logger.info(f"[{step}/{total_steps}] {progress:.1f}% - {message} (Elapsed: {elapsed:.1f}s)")
+
+def is_last_day_of_month():
+    """Check if today is the last day of the month"""
+    today = date.today()
+    next_month = today.replace(day=28) + timedelta(days=4)  # This will always get us to the next month
+    last_day_of_month = next_month - timedelta(days=next_month.day)
+    return today.day == last_day_of_month.day
 
 def main():
     """
@@ -63,8 +75,15 @@ def main():
         
         # Check if this is a scheduled run
         is_scheduled = os.environ.get("SCHEDULED_RUN", "false").lower() == "true"
+        is_last_day = is_last_day_of_month()
         run_type = "SCHEDULED RUN" if is_scheduled else "MANUAL RUN"
         logger.info(f"Run type: {run_type}")
+        
+        if is_scheduled:
+            if is_last_day:
+                logger.info("🗓️  Last day of month - Full monthly update")
+            else:
+                logger.info("📅 Daily run - Sales data only")
         
         if is_scheduled and not table_has_data(client, FACT_SALES):
             logger.warning("⚠ SCHEDULED RUN SKIPPED: No initial data found.")
@@ -73,137 +92,146 @@ def main():
             sys.exit(0)
         
         # ==================== DIMENSION TABLES ====================
-        logger.info("Generating normalized dimension tables...")
-        dim_start = time.time()
+        # Only generate dimensions on manual runs or last day of month
+        should_update_dimensions = not is_scheduled or is_last_day
         
-        # Generate core dimensions first (dependencies)
-        if not table_has_data(client, DIM_LOCATIONS):
-            logger.info("Generating locations dimension...")
-            locations = generate_dim_locations(num_locations=500)
-            append_df_bq(client, pd.DataFrame(locations), DIM_LOCATIONS)
+        if should_update_dimensions:
+            logger.info("Generating normalized dimension tables...")
+            dim_start = time.time()
         else:
-            logger.info("Locations dimension already exists. Skipping.")
-            # Load existing locations for dependency
-            locations_df = client.query(f"SELECT * FROM `{DIM_LOCATIONS}`").to_dataframe()
-            locations = locations_df.to_dict("records")
+            logger.info("Skipping dimension tables (daily run - sales only)")
         
-        if not table_has_data(client, DIM_DEPARTMENTS):
-            logger.info("Generating departments dimension...")
-            departments = generate_dim_departments()
-            append_df_bq(client, pd.DataFrame(departments), DIM_DEPARTMENTS)
-        else:
-            logger.info("Departments dimension already exists. Skipping.")
-            departments_df = client.query(f"SELECT * FROM `{DIM_DEPARTMENTS}`").to_dataframe()
-            departments = departments_df.to_dict("records")
-        
-        if not table_has_data(client, DIM_JOBS):
-            logger.info("Generating jobs dimension...")
-            jobs = generate_dim_jobs(departments)
-            append_df_bq(client, pd.DataFrame(jobs), DIM_JOBS)
-        else:
-            logger.info("Jobs dimension already exists. Skipping.")
-            jobs_df = client.query(f"SELECT * FROM `{DIM_JOBS}`").to_dataframe()
-            jobs = jobs_df.to_dict("records")
-        
-        if not table_has_data(client, DIM_BANKS):
-            logger.info("Generating banks dimension...")
-            banks = generate_dim_banks()
-            append_df_bq(client, pd.DataFrame(banks), DIM_BANKS)
-        else:
-            logger.info("Banks dimension already exists. Skipping.")
-            banks_df = client.query(f"SELECT * FROM `{DIM_BANKS}`").to_dataframe()
-            banks = banks_df.to_dict("records")
-        
-        if not table_has_data(client, DIM_INSURANCE):
-            logger.info("Generating insurance dimension...")
-            insurance = generate_dim_insurance()
-            append_df_bq(client, pd.DataFrame(insurance), DIM_INSURANCE)
-        else:
-            logger.info("Insurance dimension already exists. Skipping.")
-            insurance_df = client.query(f"SELECT * FROM `{DIM_INSURANCE}`").to_dataframe()
-            insurance = insurance_df.to_dict("records")
-        
-        # Generate dependent dimensions
-        if not table_has_data(client, DIM_PRODUCTS):
-            logger.info("Generating products dimension...")
-            products = generate_dim_products()
-            append_df_bq(client, pd.DataFrame(products), DIM_PRODUCTS)
-        else:
-            logger.info("Products dimension already exists. Skipping.")
-        
-        if not table_has_data(client, DIM_EMPLOYEES):
-            logger.info("Generating normalized employees dimension...")
-            employees = generate_dim_employees_normalized(
-                num_employees=500, 
-                locations=locations, 
-                jobs=jobs, 
-                banks=banks, 
-                insurance=insurance,
-                departments=departments  # Pass departments for robust relationships
-            )
-            append_df_bq(client, pd.DataFrame(employees), DIM_EMPLOYEES)
-        else:
-            logger.info("Employees dimension already exists. Skipping.")
-        
-        if not table_has_data(client, DIM_RETAILERS):
-            logger.info("Generating normalized retailers dimension...")
-            retailers = generate_dim_retailers_normalized(
-                num_retailers=500, 
-                locations=locations
-            )
-            append_df_bq(client, pd.DataFrame(retailers), DIM_RETAILERS)
-        else:
-            logger.info("Retailers dimension already exists. Skipping.")
-        
-        if not table_has_data(client, DIM_CAMPAIGNS):
-            logger.info("Generating campaigns dimension...")
-            campaigns = generate_dim_campaigns()
-            append_df_bq(client, pd.DataFrame(campaigns), DIM_CAMPAIGNS)
-        else:
-            logger.info("Campaigns dimension already exists. Skipping.")
-        
-        if not table_has_data(client, DATES_TABLE):
-            logger.info("Generating dates dimension...")
-            dates = generate_dim_dates()
-            append_df_bq(client, pd.DataFrame(dates), DATES_TABLE)
-        else:
-            logger.info("Dates dimension already exists. Skipping.")
-        
-        # Generate employee facts if employees exist
-        if table_has_data(client, DIM_EMPLOYEES):
-            logger.info("Processing employee data...")
-            # Load current employees
-            employees_df = client.query(f"SELECT * FROM `{DIM_EMPLOYEES}` WHERE employment_status = 'Active'").to_dataframe()
-            employees = employees_df.to_dict("records")
-            
-            # Load jobs for salary ranges
-            jobs_df = client.query(f"SELECT * FROM `{DIM_JOBS}`").to_dataframe()
-            jobs_data = jobs_df.to_dict("records")
-            
-            # Check and regenerate employee facts if needed
-            if not table_has_data(client, FACT_EMPLOYEES):
-                logger.info("Generating employee facts...")
-                employee_facts = generate_fact_employees(employees, jobs_data)
-                append_df_bq(client, pd.DataFrame(employee_facts), FACT_EMPLOYEES)
+        if should_update_dimensions:
+            # Generate core dimensions first (dependencies)
+            if not table_has_data(client, DIM_LOCATIONS):
+                logger.info("Generating locations dimension...")
+                locations = generate_dim_locations(num_locations=500)
+                append_df_bq(client, pd.DataFrame(locations), DIM_LOCATIONS)
             else:
-                logger.info("Employee facts already exist. Skipping.")
+                logger.info("Locations dimension already exists. Skipping.")
+                # Load existing locations for dependency
+                locations_df = client.query(f"SELECT * FROM `{DIM_LOCATIONS}`").to_dataframe()
+                locations = locations_df.to_dict("records")
             
-            # Always regenerate employee wages with corrected calculation
-            wages_table = f"{PROJECT_ID}.{DATASET}.fact_employee_wages"
-            logger.info("Regenerating employee wage history with corrected calculation...")
-            try:
-                # Drop existing wages table to fix the inflation issue
-                client.delete_table(wages_table)
-                logger.info("Dropped existing wages table to fix inflation issue")
-            except Exception as e:
-                logger.info(f"Wages table doesn't exist or couldn't drop: {e}")
+            if not table_has_data(client, DIM_DEPARTMENTS):
+                logger.info("Generating departments dimension...")
+                departments = generate_dim_departments()
+                append_df_bq(client, pd.DataFrame(departments), DIM_DEPARTMENTS)
+            else:
+                logger.info("Departments dimension already exists. Skipping.")
+                departments_df = client.query(f"SELECT * FROM `{DIM_DEPARTMENTS}`").to_dataframe()
+                departments = departments_df.to_dict("records")
             
-            # Generate corrected wage data (current year only)
-            employee_wages = generate_fact_employee_wages(employees, jobs_data)
-            append_df_bq(client, pd.DataFrame(employee_wages), wages_table)
-            logger.info(f"Generated {len(employee_wages)} corrected wage records")
+            if not table_has_data(client, DIM_JOBS):
+                logger.info("Generating jobs dimension...")
+                jobs = generate_dim_jobs(departments)
+                append_df_bq(client, pd.DataFrame(jobs), DIM_JOBS)
+            else:
+                logger.info("Jobs dimension already exists. Skipping.")
+                jobs_df = client.query(f"SELECT * FROM `{DIM_JOBS}`").to_dataframe()
+                jobs = jobs_df.to_dict("records")
+            
+            if not table_has_data(client, DIM_BANKS):
+                logger.info("Generating banks dimension...")
+                banks = generate_dim_banks()
+                append_df_bq(client, pd.DataFrame(banks), DIM_BANKS)
+            else:
+                logger.info("Banks dimension already exists. Skipping.")
+                banks_df = client.query(f"SELECT * FROM `{DIM_BANKS}`").to_dataframe()
+                banks = banks_df.to_dict("records")
+            
+            if not table_has_data(client, DIM_INSURANCE):
+                logger.info("Generating insurance dimension...")
+                insurance = generate_dim_insurance()
+                append_df_bq(client, pd.DataFrame(insurance), DIM_INSURANCE)
+            else:
+                logger.info("Insurance dimension already exists. Skipping.")
+                insurance_df = client.query(f"SELECT * FROM `{DIM_INSURANCE}`").to_dataframe()
+                insurance = insurance_df.to_dict("records")
+            
+            # Generate dependent dimensions
+            if not table_has_data(client, DIM_PRODUCTS):
+                logger.info("Generating products dimension...")
+                products = generate_dim_products()
+                append_df_bq(client, pd.DataFrame(products), DIM_PRODUCTS)
+            else:
+                logger.info("Products dimension already exists. Skipping.")
+            
+            if not table_has_data(client, DIM_EMPLOYEES):
+                logger.info("Generating normalized employees dimension...")
+                employees = generate_dim_employees_normalized(
+                    num_employees=500, 
+                    locations=locations, 
+                    jobs=jobs, 
+                    banks=banks, 
+                    insurance=insurance,
+                    departments=departments  # Pass departments for robust relationships
+                )
+                append_df_bq(client, pd.DataFrame(employees), DIM_EMPLOYEES)
+            else:
+                logger.info("Employees dimension already exists. Skipping.")
+            
+            if not table_has_data(client, DIM_RETAILERS):
+                logger.info("Generating normalized retailers dimension...")
+                retailers = generate_dim_retailers_normalized(
+                    num_retailers=500, 
+                    locations=locations
+                )
+                append_df_bq(client, pd.DataFrame(retailers), DIM_RETAILERS)
+            else:
+                logger.info("Retailers dimension already exists. Skipping.")
+            
+            if not table_has_data(client, DIM_CAMPAIGNS):
+                logger.info("Generating campaigns dimension...")
+                campaigns = generate_dim_campaigns()
+                append_df_bq(client, pd.DataFrame(campaigns), DIM_CAMPAIGNS)
+            else:
+                logger.info("Campaigns dimension already exists. Skipping.")
+            
+            if not table_has_data(client, DATES_TABLE):
+                logger.info("Generating dates dimension...")
+                dates = generate_dim_dates()
+                append_df_bq(client, pd.DataFrame(dates), DATES_TABLE)
+            else:
+                logger.info("Dates dimension already exists. Skipping.")
+            
+            # Generate employee facts if employees exist
+            if table_has_data(client, DIM_EMPLOYEES):
+                logger.info("Processing employee data...")
+                # Load current employees
+                employees_df = client.query(f"SELECT * FROM `{DIM_EMPLOYEES}` WHERE employment_status = 'Active'").to_dataframe()
+                employees = employees_df.to_dict("records")
+                
+                # Load jobs for salary ranges
+                jobs_df = client.query(f"SELECT * FROM `{DIM_JOBS}`").to_dataframe()
+                jobs_data = jobs_df.to_dict("records")
+                
+                # Check and regenerate employee facts if needed
+                if not table_has_data(client, FACT_EMPLOYEES):
+                    logger.info("Generating employee facts...")
+                    employee_facts = generate_fact_employees(employees, jobs_data)
+                    append_df_bq(client, pd.DataFrame(employee_facts), FACT_EMPLOYEES)
+                else:
+                    logger.info("Employee facts already exist. Skipping.")
+                
+                # Always regenerate employee wages with corrected calculation
+                wages_table = f"{PROJECT_ID}.{DATASET}.fact_employee_wages"
+                logger.info("Regenerating employee wage history with corrected calculation...")
+                try:
+                    # Drop existing wages table to fix the inflation issue
+                    client.delete_table(wages_table)
+                    logger.info("Dropped existing wages table to fix inflation issue")
+                except Exception as e:
+                    logger.info(f"Wages table doesn't exist or couldn't drop: {e}")
+                
+                # Generate corrected wage data (current year only)
+                employee_wages = generate_fact_employee_wages(employees, jobs_data)
+                append_df_bq(client, pd.DataFrame(employee_wages), wages_table)
+                logger.info(f"Generated {len(employee_wages)} corrected wage records")
+            else:
+                logger.info("No employees found. Skipping employee data generation.")
         else:
-            logger.info("No employees found. Skipping employee data generation.")
+            logger.info("Skipping dimension and employee data generation (daily run - sales only)")
         
         # Load existing dimensions for fact table generation (optimized queries)
         try:
@@ -381,7 +409,7 @@ def main():
             if not max_key_result.empty and pd.notna(max_key_result['max_key'].iloc[0]):
                 start_id = int(max_key_result['max_key'].iloc[0]) + 1
             
-            sales = generate_fact_sales(
+            sales = generate_daily_sales_with_delivery_updates(
                 employees, products, retailers, campaigns,
                 DAILY_SALES_AMOUNT,
                 start_date=today,
@@ -396,96 +424,141 @@ def main():
         logger.info(f"  Total sales records: {len(sales):,}")
         logger.info(f"  Total sales amount: ₱{sum(s['total_amount'] for s in sales):,.2f}")
         
-        # Update delivery status only for scheduled runs
+        # Update delivery status for all runs (daily and scheduled)
+        logger.info("Checking delivery status...")
+        # For free tier, we can only monitor, not update directly
+        # The actual status updates will be handled using BigQuery free tier methods
+        update_delivery_status(client, FACT_SALES)
+        
+        # For scheduled runs, update delivery statuses using official BigQuery methods
         if is_scheduled:
-            logger.info("Updating delivery status...")
-            update_delivery_status(client, FACT_SALES)
-        
-        # Generate other fact tables (only on initial run)
-        logger.info("Generating additional fact tables...")
-        
-        if not table_has_data(client, FACT_OPERATING_COSTS):
-            logger.info("\nGenerating operating costs fact...")
-            # Generate operating costs from 2015 to present with reduced values (15% of revenue)
-            costs = generate_fact_operating_costs(
-                INITIAL_SALES_AMOUNT * 0.15,  # Reduced from 25% to 15% of revenue
-                start_date=date(2015, 1, 1),
-                end_date=date.today()
-            )
-            append_df_bq(client, pd.DataFrame(costs), FACT_OPERATING_COSTS)
-        else:
-            logger.info("Dropping existing operating costs table to regenerate with correct ratios...")
+            logger.info("Updating delivery statuses using BigQuery free tier methods...")
+            
             try:
-                client.delete_table(FACT_OPERATING_COSTS)
-                logger.info("Operating costs table dropped successfully")
+                # Method 1: Direct table overwrite (simple, no audit trail)
+                logger.info("Method 1: Direct table overwrite...")
+                method1_success = execute_method_1_overwrite(client, PROJECT_ID, DATASET, FACT_SALES)
+                
+                if method1_success:
+                    logger.info("✅ Delivery statuses updated successfully")
+                    
+                    # Get updated status summary
+                    summary_df = get_delivery_status_summary(client, PROJECT_ID, DATASET)
+                    if not summary_df.empty:
+                        logger.info("📊 Current Delivery Status Summary:")
+                        for _, row in summary_df.iterrows():
+                            logger.info(f"   {row['current_delivery_status']}: {row['order_count']:,} orders (PHP {row['total_value']:,.2f})")
+                else:
+                    logger.warning("Method 1 failed, trying Method 2...")
+                    
+                    # Method 2: Append update records (with audit trail)
+                    logger.info("Method 2: Append update records...")
+                    method2_success = execute_method_2_append(client, PROJECT_ID, DATASET, 'delivery_status_updates')
+                    
+                    if method2_success:
+                        # Create current status view
+                        view_query = create_current_delivery_status_view(PROJECT_ID, DATASET, FACT_SALES, 'delivery_status_updates')
+                        client.query(view_query).result()
+                        logger.info("✅ Delivery status updates appended and view created")
+                    else:
+                        logger.warning("All update methods failed, continuing with run...")
+                        
+            except Exception as e:
+                logger.warning(f"Could not update delivery statuses: {e}")
+                logger.info("Continuing with scheduled run...")
+                logger.info("💡 Tip: You can manually update statuses using BigQuery Console with WRITE_TRUNCATE")
+        
+        # Generate other fact tables (only on manual runs or last day of month)
+        should_update_facts = not is_scheduled or is_last_day
+        
+        if should_update_facts:
+            logger.info("Generating additional fact tables...")
+        else:
+            logger.info("Skipping additional fact tables (daily run - sales only)")
+        
+        if should_update_facts:
+            if not table_has_data(client, FACT_OPERATING_COSTS):
                 logger.info("\nGenerating operating costs fact...")
+                # Generate operating costs from 2015 to present with reduced values (15% of revenue)
                 costs = generate_fact_operating_costs(
                     INITIAL_SALES_AMOUNT * 0.15,  # Reduced from 25% to 15% of revenue
                     start_date=date(2015, 1, 1),
                     end_date=date.today()
                 )
                 append_df_bq(client, pd.DataFrame(costs), FACT_OPERATING_COSTS)
-                logger.info("Operating costs regenerated with correct ratios")
-            except Exception as e:
-                logger.warning(f"Could not regenerate operating costs table: {e}")
-                logger.info("Operating costs table already exists. Skipping.")
-        
-        # Marketing costs generation
-        logger.info(f"\nChecking marketing costs table: {FACT_MARKETING_COSTS}")
-        marketing_table_exists = table_has_data(client, FACT_MARKETING_COSTS)
-        logger.info(f"Marketing costs table exists: {marketing_table_exists}")
-        
-        # Drop existing marketing costs table to force regeneration with new campaigns
-        if marketing_table_exists:
-            logger.info("Dropping existing marketing costs table to regenerate with new campaigns...")
-            try:
-                client.delete_table(FACT_MARKETING_COSTS)
-                logger.info("Marketing costs table dropped successfully")
-                marketing_table_exists = False
-            except Exception as e:
-                logger.warning(f"Could not drop marketing costs table: {e}")
-        
-        # Force regenerate marketing costs if it's missing or empty
-        if not marketing_table_exists:
-            logger.info("Generating marketing costs fact...")
-            try:
-                # Always use historical range for marketing costs to match campaigns
-                # Marketing costs should cover the full campaign period regardless of sales table status
-                start_date = date(2015, 1, 1)
-                end_date = date.today() - timedelta(days=1)
-                
-                logger.info(f"Marketing costs date range: {start_date} to {end_date}")
-                logger.info(f"Number of campaigns available: {len(campaigns)}")
-                
-                # Debug: Show campaign date ranges
-                for i, campaign in enumerate(campaigns[:3]):  # Show first 3 campaigns
-                    logger.info(f"Campaign {i+1}: {campaign['campaign_name']} ({campaign['start_date']} to {campaign['end_date']})")
-                
-                marketing_costs = generate_fact_marketing_costs(
-                    campaigns, 
-                    INITIAL_SALES_AMOUNT * 0.08,  # 8% of revenue (realistic marketing spend)
-                    start_date=start_date,
-                    end_date=end_date
-                )
-                logger.info(f"Generated {len(marketing_costs):,} marketing cost records")
-                if len(marketing_costs) > 0:
-                    append_df_bq(client, pd.DataFrame(marketing_costs), FACT_MARKETING_COSTS)
-                    logger.info("Marketing costs loaded successfully")
-                else:
-                    logger.warning("No marketing costs generated - skipping table creation")
-                    logger.warning("This might be due to date range mismatch with campaigns")
-            except Exception as e:
-                logger.error(f"Error generating marketing costs: {str(e)}")
-                raise
-        else:
-            logger.info("Marketing costs table already exists. Skipping.")
-        
-        if not table_has_data(client, FACT_INVENTORY):
-            logger.info("\nGenerating inventory fact...")
-            inventory = generate_fact_inventory(products)
-            append_df_bq(client, pd.DataFrame(inventory), FACT_INVENTORY)
-        else:
-            logger.info("Inventory table already exists. Skipping.")
+            else:
+                logger.info("Dropping existing operating costs table to regenerate with correct ratios...")
+                try:
+                    client.delete_table(FACT_OPERATING_COSTS)
+                    logger.info("Operating costs table dropped successfully")
+                    logger.info("\nGenerating operating costs fact...")
+                    costs = generate_fact_operating_costs(
+                        INITIAL_SALES_AMOUNT * 0.15,  # Reduced from 25% to 15% of revenue
+                        start_date=date(2015, 1, 1),
+                        end_date=date.today()
+                    )
+                    append_df_bq(client, pd.DataFrame(costs), FACT_OPERATING_COSTS)
+                    logger.info("Operating costs regenerated with correct ratios")
+                except Exception as e:
+                    logger.warning(f"Could not regenerate operating costs table: {e}")
+                    logger.info("Operating costs table already exists. Skipping.")
+            
+            # Marketing costs generation
+            logger.info(f"\nChecking marketing costs table: {FACT_MARKETING_COSTS}")
+            marketing_table_exists = table_has_data(client, FACT_MARKETING_COSTS)
+            logger.info(f"Marketing costs table exists: {marketing_table_exists}")
+            
+            # Drop existing marketing costs table to force regeneration with new campaigns
+            if marketing_table_exists:
+                logger.info("Dropping existing marketing costs table to regenerate with new campaigns...")
+                try:
+                    client.delete_table(FACT_MARKETING_COSTS)
+                    logger.info("Marketing costs table dropped successfully")
+                    marketing_table_exists = False
+                except Exception as e:
+                    logger.warning(f"Could not drop marketing costs table: {e}")
+            
+            # Force regenerate marketing costs if it's missing or empty
+            if not marketing_table_exists:
+                logger.info("Generating marketing costs fact...")
+                try:
+                    # Always use historical range for marketing costs to match campaigns
+                    # Marketing costs should cover the full campaign period regardless of sales table status
+                    start_date = date(2015, 1, 1)
+                    end_date = date.today() - timedelta(days=1)
+                    
+                    logger.info(f"Marketing costs date range: {start_date} to {end_date}")
+                    logger.info(f"Number of campaigns available: {len(campaigns)}")
+                    
+                    # Debug: Show campaign date ranges
+                    for i, campaign in enumerate(campaigns[:3]):  # Show first 3 campaigns
+                        logger.info(f"Campaign {i+1}: {campaign['campaign_name']} ({campaign['start_date']} to {campaign['end_date']})")
+                    
+                    marketing_costs = generate_fact_marketing_costs(
+                        campaigns, 
+                        INITIAL_SALES_AMOUNT * 0.08,  # 8% of revenue (realistic marketing spend)
+                        start_date=start_date,
+                        end_date=end_date
+                    )
+                    logger.info(f"Generated {len(marketing_costs):,} marketing cost records")
+                    if len(marketing_costs) > 0:
+                        append_df_bq(client, pd.DataFrame(marketing_costs), FACT_MARKETING_COSTS)
+                        logger.info("Marketing costs loaded successfully")
+                    else:
+                        logger.warning("No marketing costs generated - skipping table creation")
+                        logger.warning("This might be due to date range mismatch with campaigns")
+                except Exception as e:
+                    logger.error(f"Error generating marketing costs: {str(e)}")
+                    raise
+            else:
+                logger.info("Marketing costs table already exists. Skipping.")
+            
+            if not table_has_data(client, FACT_INVENTORY):
+                logger.info("\nGenerating inventory fact...")
+                inventory = generate_fact_inventory(products)
+                append_df_bq(client, pd.DataFrame(inventory), FACT_INVENTORY)
+            else:
+                logger.info("Inventory table already exists. Skipping.")
         
         # ==================== SUMMARY ====================
         logger.info("Load complete!")

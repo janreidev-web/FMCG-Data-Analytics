@@ -210,6 +210,20 @@ FACT_SALES_SCHEMA = [
     {"name": "actual_delivery_date", "type": "DATE", "mode": "NULLABLE"},
 ]
 
+DELIVERY_STATUS_UPDATES_SCHEMA = [
+    {"name": "update_key", "type": "INTEGER", "mode": "REQUIRED"},
+    {"name": "sale_key", "type": "INTEGER", "mode": "REQUIRED"},
+    {"name": "previous_status", "type": "STRING", "mode": "REQUIRED"},
+    {"name": "new_status", "type": "STRING", "mode": "REQUIRED"},
+    {"name": "previous_actual_delivery_date", "type": "DATE", "mode": "NULLABLE"},
+    {"name": "new_actual_delivery_date", "type": "DATE", "mode": "NULLABLE"},
+    {"name": "update_date", "type": "DATE", "mode": "REQUIRED"},
+    {"name": "days_since_sale", "type": "INTEGER", "mode": "REQUIRED"},
+    {"name": "update_reason", "type": "STRING", "mode": "REQUIRED"}
+]
+
+DELIVERY_UPDATES_STAGING_SCHEMA = DELIVERY_STATUS_UPDATES_SCHEMA  # Same schema for staging table
+
 FACT_OPERATING_COSTS_SCHEMA = [
     {"name": "cost_key", "type": "INTEGER", "mode": "REQUIRED"},
     {"name": "cost_date", "type": "DATE", "mode": "REQUIRED"},

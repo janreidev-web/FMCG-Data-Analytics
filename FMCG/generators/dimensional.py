@@ -874,6 +874,109 @@ def validate_relationships(employees, products, retailers, campaigns, locations,
         print("✅ All relationships validated successfully!")
         return True
 
+def generate_daily_sales_with_delivery_updates(employees, products, retailers, campaigns, target_amount, start_date=None, end_date=None, start_id=1):
+    """Generate daily sales with simulated delivery status updates for existing orders"""
+    import pandas as pd
+    from datetime import datetime
+    
+    sales = []
+    sale_key = start_id
+    
+    if start_date is None:
+        start_date = date.today()
+    if end_date is None:
+        end_date = start_date
+    
+    # Filter active records and create safe lookups for robust relationships
+    active_employees = [e for e in employees if e.get('employment_status') == 'Active']
+    active_products = [p for p in products if p.get('status') == 'Active']
+    
+    # Create safe lookup dictionaries to prevent relationship errors
+    employee_lookup = {emp["employee_key"]: emp for emp in active_employees}
+    product_lookup = {prod["product_key"]: prod for prod in active_products}
+    retailer_lookup = {ret["retailer_key"]: ret for ret in retailers}
+    campaign_lookup = {camp["campaign_key"]: camp for camp in campaigns}
+    
+    # Validate we have enough records for relationships
+    if not active_employees:
+        raise ValueError("No active employees found for sales generation")
+    if not active_products:
+        raise ValueError("No active products found for sales generation")
+    if not retailers:
+        raise ValueError("No retailers found for sales generation")
+    
+    print(f"Generating daily sales for {start_date} with delivery simulation")
+    
+    # Generate new sales for today
+    daily_sales_count = random.randint(50, 150)  # Daily sales volume
+    for i in range(daily_sales_count):
+        # Safe random selection with fallbacks
+        employee = random.choice(active_employees)
+        product = random.choice(active_products)
+        retailer = random.choice(retailers)
+        
+        # Campaign selection (30% chance of having a campaign)
+        campaign = None
+        if campaigns and random.random() < 0.3:
+            campaign = random.choice(campaigns)
+        
+        # Sales quantities and pricing
+        case_quantity = random.randint(1, 10)
+        unit_price = product["retail_price"]
+        discount_percent = random.uniform(0, 0.15) if campaign else 0
+        tax_rate = 0.12  # 12% VAT
+        
+        subtotal = case_quantity * unit_price
+        discount_amount = subtotal * discount_percent
+        taxable_amount = subtotal - discount_amount
+        tax_amount = taxable_amount * tax_rate
+        total_amount = taxable_amount + tax_amount
+        
+        # Commission calculation
+        commission_rate = 0.05 if campaign else 0.03
+        commission_amount = total_amount * commission_rate
+        
+        # Payment and delivery - simulate realistic delivery progression
+        payment_method = random.choice(["Cash", "Credit Card", "Bank Transfer", "Mobile Payment"])
+        payment_status = "Paid"
+        
+        # Simulate delivery status based on current date and expected delivery
+        delivery_statuses = ["Processing", "In Transit", "Delivered"]
+        delivery_weights = [0.3, 0.4, 0.3]  # 30% processing, 40% in transit, 30% delivered
+        
+        delivery_status = random.choices(delivery_statuses, weights=delivery_weights)[0]
+        
+        expected_delivery = start_date + timedelta(days=random.randint(1, 5))
+        actual_delivery = expected_delivery if delivery_status == "Delivered" else None
+        
+        sales.append({
+            "sale_key": sale_key,
+            "sale_date": start_date,
+            "product_key": product["product_key"],
+            "employee_key": employee["employee_key"],
+            "retailer_key": retailer["retailer_key"],
+            "campaign_key": campaign["campaign_key"] if campaign else None,
+            "case_quantity": case_quantity,
+            "unit_price": unit_price,
+            "discount_percent": discount_percent,
+            "discount_amount": discount_amount,
+            "tax_rate": tax_rate,
+            "tax_amount": tax_amount,
+            "total_amount": total_amount,
+            "commission_amount": commission_amount,
+            "currency": "PHP",
+            "payment_method": payment_method,
+            "payment_status": payment_status,
+            "delivery_status": delivery_status,
+            "expected_delivery_date": expected_delivery,
+            "actual_delivery_date": actual_delivery,
+        })
+        
+        sale_key += 1
+    
+    print(f"Generated {len(sales)} new daily sales for {start_date}")
+    return sales
+
 def generate_fact_sales(employees, products, retailers, campaigns, target_amount, start_date=None, end_date=None, start_id=1):
     """Generate sales fact table with realistic growth over time and robust relationships"""
     sales = []

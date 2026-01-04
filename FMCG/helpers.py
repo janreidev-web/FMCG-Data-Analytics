@@ -180,26 +180,23 @@ def update_delivery_status(client, fact_sales_table):
         today = datetime.now().date()
         logger.info(f"Checking delivery status for orders as of {today}")
         
-        # Read-only query to check orders that should be delivered
-        # This identifies orders that would be updated in a full version
+        # Read-only query to check orders by status
+        # This provides a summary of current delivery statuses
         check_query = f"""
             SELECT 
                 `sale_key`,
                 `sale_date`,
-                `expected_delivery_date`,
                 `delivery_status`,
                 `total_amount`,
                 `retailer_key`,
                 CASE 
-                    WHEN `delivery_status` IN ('In Transit', 'Processing')
-                    AND `expected_delivery_date` <= '{today}'
-                    AND `actual_delivery_date` IS NULL
-                    THEN 'Should be Delivered'
-                    ELSE 'Current Status'
-                END as action_needed
+                    WHEN `delivery_status` IN ('In Transit', 'Processing', 'Pending')
+                    THEN 'Active Order'
+                    ELSE 'Completed Order'
+                END as order_status
             FROM `{fact_sales_table}`
             WHERE `sale_date` >= DATE_SUB('{today}', INTERVAL 30 DAY)
-            ORDER BY `expected_delivery_date` ASC
+            ORDER BY `sale_date` DESC
             LIMIT 100
         """
         
@@ -210,39 +207,36 @@ def update_delivery_status(client, fact_sales_table):
             logger.info("No recent orders found in the last 30 days.")
             return
         
-        # Count orders by status and action needed
-        status_summary = result_df.groupby(['delivery_status', 'action_needed']).agg({
+        # Count orders by status
+        status_summary = result_df.groupby(['delivery_status', 'order_status']).agg({
             'sale_key': 'count',
             'total_amount': 'sum'
         }).rename(columns={'sale_key': 'count'})
         
         logger.info(f"Found {len(result_df):,} recent orders:")
         
-        for (delivery_status, action_needed), group in status_summary.iterrows():
+        for (delivery_status, order_status), group in status_summary.iterrows():
             count = int(group['count'])
             amount = float(group['total_amount'])
-            logger.info(f"  {delivery_status} - {action_needed}: {count:,} orders (PHP {amount:,.2f})")
+            logger.info(f"  {delivery_status} - {order_status}: {count:,} orders (PHP {amount:,.2f})")
         
-        # Identify orders that need delivery status update
-        needs_update = result_df[result_df['action_needed'] == 'Should be Delivered']
+        # Identify active orders
+        active_orders = result_df[result_df['order_status'] == 'Active Order']
         
-        if not needs_update.empty:
-            logger.info(f"\nOrders Ready for Delivery ({len(needs_update)} orders):")
-            total_value = needs_update['total_amount'].sum()
+        if not active_orders.empty:
+            logger.info(f"\nActive Orders ({len(active_orders)} orders):")
+            total_value = active_orders['total_amount'].sum()
             logger.info(f"   Total Value: PHP {total_value:,.2f}")
-            logger.info(f"   Date Range: {needs_update['expected_delivery_date'].min()} to {needs_update['expected_delivery_date'].max()}")
             
-            # Show sample of orders that would be updated
-            sample_size = min(5, len(needs_update))
-            logger.info(f"\nSample Orders (showing {sample_size} of {len(needs_update)}):")
-            for _, order in needs_update.head(sample_size).iterrows():
-                # Convert string dates to date objects if needed
-                expected_date = pd.to_datetime(order['expected_delivery_date']).date()
-                days_overdue = (today - expected_date).days
-                status_text = f"{days_overdue} days overdue" if days_overdue > 0 else "due today"
-                logger.info(f"   Order #{order['sale_key']}: PHP {order['total_amount']:,.2f} ({status_text})")
+            # Show sample of active orders
+            sample_size = min(5, len(active_orders))
+            logger.info(f"\nSample Active Orders (showing {sample_size} of {len(active_orders)}):")
+            for _, order in active_orders.head(sample_size).iterrows():
+                order_date = pd.to_datetime(order['sale_date']).date()
+                days_active = (today - order_date).days
+                logger.info(f"   Order #{order['sale_key']}: PHP {order['total_amount']:,.2f} ({days_active} days ago)")
         else:
-            logger.info("✅ All deliveries are current. No orders need status updates.")
+            logger.info("✅ No active orders found. All recent orders are delivered.")
         
         # Overall delivery status summary
         overall_summary = result_df.groupby('delivery_status').agg({
@@ -257,10 +251,11 @@ def update_delivery_status(client, fact_sales_table):
             percentage = (count / len(result_df)) * 100
             logger.info(f"   {status}: {count:,} orders ({percentage:.1f}%) - PHP {amount:,.2f}")
         
-        logger.info(f"\nNote: This is a read-only monitoring version.")
-        logger.info(f"   To update delivery status, enable billing or use a paid BigQuery tier.")
+        logger.info(f"\nNote: Delivery status monitoring only (free tier compatible).")
+        logger.info(f"   No delivery date tracking - status only.")
         
     except Exception as e:
         logger.error(f"Error checking delivery status: {str(e)}")
         # Don't raise the error - just log it so the scheduled run can continue
         logger.info("Continuing with scheduled run despite delivery status check failure...")
+
