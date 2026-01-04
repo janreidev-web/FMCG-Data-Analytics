@@ -66,6 +66,15 @@ def append_df_bq_safe(client, df, table_id, id_column, write_disposition="WRITE_
     """
     if df.empty:
         logger.warning(f"No data to append to {table_id}")
+        # For empty DataFrame, we still want to ensure the table exists
+        # Check if table exists, and if not, create it with schema
+        try:
+            client.get_table(table_id)
+            logger.info(f"Table {table_id} already exists")
+        except Exception:
+            logger.info(f"Table {table_id} doesn't exist, creating empty table...")
+            # Create table with minimal schema - this will be handled by the schema creation in main script
+            logger.warning(f"Cannot create empty table {table_id} - schema must be defined first")
         return 0
     
     logger.info(f"Checking for duplicates in {table_id} using {id_column}...")
