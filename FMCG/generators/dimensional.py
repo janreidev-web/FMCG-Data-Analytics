@@ -917,6 +917,8 @@ def validate_relationships(employees, products, retailers, campaigns, locations,
 
 def generate_fact_sales(employees, products, retailers, campaigns, target_amount, start_date=None, end_date=None, start_id=1):
     """Generate sales fact table with realistic growth over time and robust relationships"""
+    from datetime import timedelta  # Ensure timedelta is available in local scope
+    
     sales = []
     id_gen = get_id_generator()
     
@@ -1051,6 +1053,8 @@ def generate_fact_sales(employees, products, retailers, campaigns, target_amount
 
 def generate_fact_operating_costs(target_amount, start_date=None, end_date=None, start_id=1):
     """Generate operating costs fact table"""
+    from datetime import timedelta  # Ensure timedelta is available in local scope
+    
     costs = []
     id_gen = get_id_generator()
     
@@ -1103,6 +1107,8 @@ def generate_fact_operating_costs(target_amount, start_date=None, end_date=None,
 
 def generate_fact_marketing_costs(campaigns, target_amount, start_date=None, end_date=None, start_id=1):
     """Generate marketing costs fact table"""
+    from datetime import timedelta  # Ensure timedelta is available in local scope
+    
     costs = []
     id_gen = get_id_generator()
     
