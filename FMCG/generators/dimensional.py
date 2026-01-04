@@ -4,14 +4,74 @@ Generates data for the normalized schema to reduce redundancy
 """
 
 import random
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from faker import Faker
 import pandas as pd
+import hashlib
 from helpers import random_date_range
 from geography import PH_GEOGRAPHY, pick_ph_location
 from config import DAILY_SALES_AMOUNT
 
 fake = Faker()
+
+def generate_unique_sale_key(sale_date, product_key, employee_key, retailer_key, sequence_num, timestamp_ms=None):
+    """Generate unique sale key using date + key fields + sequence + timestamp"""
+    # Format: YYYYMMDD (8) + product_key (3) + employee_key (3) + retailer_key (3) + sequence (5) + timestamp_ms (3) = 25 chars
+    # Use hash to fit in 19-digit BigQuery INTEGER limit while maintaining uniqueness
+    date_str = sale_date.strftime("%Y%m%d")
+    if timestamp_ms is None:
+        # Use microseconds from current time for uniqueness
+        timestamp_ms = datetime.now().microsecond // 1000  # Milliseconds (0-999)
+    # Create unique ID from date + keys + sequence + timestamp
+    combined_str = f"{date_str}{product_key:03d}{employee_key:03d}{retailer_key:03d}{sequence_num:05d}{timestamp_ms:03d}"
+    # Use hash to create compact unique ID that fits in 19 digits
+    key_hash = int(hashlib.md5(combined_str.encode()).hexdigest()[:11], 16)  # 11 hex chars = ~13 decimal digits
+    # Combine date prefix (8) with hash (11) = 19 digits max
+    # Format hash as 11-digit number (pad with zeros if needed)
+    hash_str = f"{key_hash:011d}"
+    unique_id = int(f"{date_str}{hash_str}")
+    # Ensure it fits in 19 digits (BigQuery INTEGER limit)
+    if len(str(unique_id)) > 19:
+        unique_id = int(str(unique_id)[:19])
+    return unique_id
+
+def generate_unique_wage_key(employee_key, effective_date, sequence_num):
+    """Generate unique wage key using employee + date + sequence"""
+    # Format: employee_key (6 digits) + YYYYMMDD + sequence (4 digits)
+    date_str = effective_date.strftime("%Y%m%d")
+    return int(f"{employee_key:06d}{date_str}{sequence_num:04d}")
+
+def generate_unique_cost_key(cost_date, category_code, sequence_num):
+    """Generate unique cost key using date + category + sequence"""
+    # Format: YYYYMMDD + category_code (2 digits) + sequence (6 digits)
+    date_str = cost_date.strftime("%Y%m%d")
+    category_map = {"Salaries & Wages": 10, "Rent & Utilities": 20, "Marketing & Sales": 30, 
+                    "Operations": 40, "Administrative": 50}
+    cat_code = category_map.get(category_code, 99)
+    return int(f"{date_str}{cat_code:02d}{sequence_num:06d}")
+
+def generate_unique_inventory_key(product_key, location_key, inventory_date, sequence_num):
+    """Generate unique inventory key using product + location + date + sequence"""
+    # Format: product_key (4 digits) + location_key (3 digits) + YYYYMMDD + sequence (4 digits)
+    date_str = inventory_date.strftime("%Y%m%d")
+    return int(f"{product_key:04d}{location_key:03d}{date_str}{sequence_num:04d}")
+
+def generate_unique_marketing_cost_key(campaign_key, cost_date, category_code, sequence_num):
+    """Generate unique marketing cost key using campaign + date + category + sequence"""
+    # Format: campaign_key (3 digits) + YYYYMMDD + category_code (2 digits) + sequence (4 digits)
+    date_str = cost_date.strftime("%Y%m%d")
+    category_map = {"Digital Advertising": 10, "Print Media": 20, "TV/Radio": 30, "Events": 40,
+                    "Sponsorships": 50, "Social Media": 60, "Content Creation": 70, 
+                    "Market Research": 80, "Brand Materials": 90}
+    cat_code = category_map.get(category_code, 99)
+    camp_key = campaign_key if campaign_key else 0
+    return int(f"{camp_key:03d}{date_str}{cat_code:02d}{sequence_num:04d}")
+
+def generate_unique_employee_fact_key(employee_key, effective_date, sequence_num):
+    """Generate unique employee fact key using employee + date + sequence"""
+    # Format: employee_key (6 digits) + YYYYMMDD + sequence (4 digits)
+    date_str = effective_date.strftime("%Y%m%d")
+    return int(f"{employee_key:06d}{date_str}{sequence_num:04d}")
 
 def generate_dim_locations(num_locations=500, start_id=1):
     """Generate locations dimension table with normalized address data"""
@@ -80,7 +140,7 @@ def generate_dim_jobs(departments, start_id=1):
     job_key = start_id
 
     # Optimized salary ranges for 20% wage/revenue ratio
-    # Target: ₱6B revenue × 20% = ₱1.2B total wages ÷ 500 employees = ₱2.4M avg annual salary
+    # Target: ₱40B revenue over 10 years × 20% = ₱8B total wages ÷ 500 employees = ₱1.6M avg annual salary per employee
     salary_ranges = {
         "Entry": (15000, 25000),      # ₱180K-₱300K annually
         "Junior": (25000, 40000),     # ₱300K-₱480K annually
@@ -373,13 +433,22 @@ def generate_dim_employees_normalized(num_employees, locations, jobs, banks, ins
     
     return employees
 
-def generate_fact_employee_wages(employees, jobs, start_date=None, end_date=None, start_id=1):
-    """Generate annual wage records for all employees based on their actual employment periods"""
+def generate_fact_employee_wages(employees, jobs, departments=None, start_date=None, end_date=None, start_id=1):
+    """Generate annual wage records for all employees with historical data from hire date to present"""
     wages = []
-    wage_key = start_id
+    wage_sequence = 0
     
     # Create job lookup
     job_lookup = {job["job_key"]: job for job in jobs}
+    
+    # Create department lookup if departments are provided
+    dept_lookup = {}
+    if departments:
+        dept_lookup = {dept["department_key"]: dept["department_name"] for dept in departments}
+    
+    # Default end date is today if not provided
+    if end_date is None:
+        end_date = date.today()
     
     for employee in employees:
         job = job_lookup.get(employee["job_key"])
@@ -391,11 +460,14 @@ def generate_fact_employee_wages(employees, jobs, start_date=None, end_date=None
         if employee["employment_status"] == "Terminated" and employee["termination_date"]:
             end_employment = employee["termination_date"]
         else:
-            end_employment = date.today()
+            end_employment = end_date
         
         # Skip if employee hasn't worked yet
         if hire_date > end_employment:
             continue
+        
+        # Get department name
+        department_name = dept_lookup.get(job.get("department_key"), "Unknown")
         
         # Initial salary based on job
         base_salary = random.randint(job["base_salary_min"], job["base_salary_max"])
@@ -410,60 +482,79 @@ def generate_fact_employee_wages(employees, jobs, start_date=None, end_date=None
         elif job["work_type"] == "Probationary":
             base_salary = int(base_salary * 0.8)
         
+        # Generate wage records for each year from hire_date to end_employment
+        # Start from the year of hire
+        current_year_start = date(hire_date.year, 1, 1)
+        if current_year_start < hire_date:
+            # If hired mid-year, start from hire date
+            current_year_start = hire_date
+        
         current_salary = base_salary
+        years_of_service = 0
         
-        # Calculate total employment duration in years (capped at 10 years for raises)
-        total_years = (end_employment - hire_date).days // 365
-        raise_years = min(total_years, 10)  # Cap at 10 years for raise calculations
+        # Pre-calculate salary progression for consistency
+        salary_by_year = {}
+        salary_by_year[0] = base_salary  # Year 0 = starting salary
         
-        # Apply raises based on years of service
-        for year in range(1, raise_years + 1):
+        # Calculate salary for each year up to 10 years (raises cap at 10 years)
+        for year in range(1, 11):
             raise_percentage = random.uniform(0.03, 0.08)
             if job["job_level"] in ["Manager", "Director"]:
                 raise_percentage = random.uniform(0.05, 0.10)
             elif job["job_level"] == "Senior":
                 raise_percentage = random.uniform(0.04, 0.09)
             
-            current_salary = int(current_salary * (1 + raise_percentage))
+            # Apply raise to previous year's salary
+            salary_by_year[year] = int(salary_by_year[year - 1] * (1 + raise_percentage))
         
-        # Calculate salary for the employment period
-        # Both monthly and annual should represent total wages earned during employment
-        if employee["employment_status"] == "Terminated":
-            # For terminated employees: calculate total wages earned from hire to termination
-            months_worked = max(1, (end_employment.year - hire_date.year) * 12 + (end_employment.month - hire_date.month) + 1)
-            annual_salary = current_salary * months_worked  # Total wages earned during employment
-            monthly_salary = current_salary  # Final monthly salary at termination
-            effective_date = end_employment
-        else:
-            # For active employees: current year annual salary (12 months)
+        # Generate records for each year
+        while current_year_start <= end_employment:
+            # Determine the end date for this record (end of year or end_employment, whichever is earlier)
+            year_end = date(current_year_start.year, 12, 31)
+            record_end_date = min(year_end, end_employment)
+            
+            # Calculate years of service at the start of this record
+            years_of_service = (current_year_start - hire_date).days // 365
+            
+            # Get salary for this year (capped at 10 years for raises)
+            salary_year = min(years_of_service, 10)
+            current_salary = salary_by_year.get(salary_year, salary_by_year[10])
+            
+            # Calculate annual salary (12 months worth)
             annual_salary = current_salary * 12
-            monthly_salary = current_salary  # Current monthly salary
-            effective_date = date.today()
-        
-        # Generate single wage record
-        wages.append({
-            "wage_key": wage_key,
-            "employee_key": employee["employee_key"],
-            "effective_date": effective_date,
-            "job_title": job["job_title"],
-            "job_level": job["job_level"],
-            "department": job_lookup.get(job_lookup.get(employee["job_key"], {}).get("department_key"), {}).get("department_name", "Unknown"),
-            "monthly_salary": monthly_salary,
-            "annual_salary": annual_salary,
-            "currency": "PHP",
-            "years_of_service": total_years,
-            "salary_grade": (current_salary // 10000) + 1,
-            "employment_status": employee["employment_status"]
-        })
-        
-        wage_key += 1
+            monthly_salary = current_salary
+            
+            # Use the start of the year as effective_date for consistency
+            # But if hired mid-year, use hire date for first record
+            effective_date = date(current_year_start.year, 1, 1)
+            if effective_date < hire_date:
+                effective_date = hire_date
+            
+            wage_sequence += 1
+            wages.append({
+                "wage_key": generate_unique_wage_key(employee["employee_key"], effective_date, wage_sequence),
+                "employee_key": employee["employee_key"],
+                "effective_date": effective_date,
+                "job_title": job["job_title"],
+                "job_level": job["job_level"],
+                "department": department_name,
+                "monthly_salary": monthly_salary,
+                "annual_salary": annual_salary,
+                "currency": "PHP",
+                "years_of_service": years_of_service,
+                "salary_grade": (current_salary // 10000) + 1,
+                "employment_status": employee["employment_status"]
+            })
+            
+            # Move to next year
+            current_year_start = date(current_year_start.year + 1, 1, 1)
     
     return wages
 
 def generate_fact_employees(employees, jobs, start_id=1):
     """Generate simplified employee fact table with current metrics"""
     employee_facts = []
-    fact_key = start_id
+    fact_sequence = 0
     
     # Create job lookup
     job_lookup = {job["job_key"]: job for job in jobs}
@@ -506,10 +597,12 @@ def generate_fact_employees(employees, jobs, start_id=1):
         sick_leave_balance = random.randint(0, 10)
         personal_leave_balance = random.randint(0, 5)
         
+        fact_sequence += 1
+        effective_date = date.today()
         employee_facts.append({
-            "employee_fact_key": fact_key,
+            "employee_fact_key": generate_unique_employee_fact_key(employee["employee_key"], effective_date, fact_sequence),
             "employee_key": employee["employee_key"],
-            "effective_date": date.today(),
+            "effective_date": effective_date,
             
             # Performance metrics
             "performance_rating": performance_rating,
@@ -541,8 +634,6 @@ def generate_fact_employees(employees, jobs, start_id=1):
             "sick_leave_balance": sick_leave_balance,
             "personal_leave_balance": personal_leave_balance,
         })
-        
-        fact_key += 1
     
     return employee_facts
 
@@ -558,7 +649,7 @@ def generate_fact_inventory(products, start_id=1):
         "Davao - Mindanao Warehouse"
     ]
     
-    inventory_key = start_id
+    inventory_sequence = 0
     
     for product in products:
         # Generate inventory records for each warehouse location
@@ -572,18 +663,18 @@ def generate_fact_inventory(products, start_id=1):
             
             # Generate inventory date (recent snapshot)
             inventory_date = fake.date_between_dates(date_start=date.today() - timedelta(days=30), date_end=date.today())
+            location_key = random.randint(1, 500)  # Random location key from dim_locations
             
+            inventory_sequence += 1
             inventory.append({
-                "inventory_key": inventory_key,
+                "inventory_key": generate_unique_inventory_key(product["product_key"], location_key, inventory_date, inventory_sequence),
                 "inventory_date": inventory_date,
                 "product_key": product["product_key"],
-                "location_key": random.randint(1, 500),  # Random location key from dim_locations
+                "location_key": location_key,
                 "cases_on_hand": cases_on_hand,
                 "unit_cost": unit_cost,
                 "currency": "PHP"
             })
-            
-            inventory_key += 1
     
     return inventory
 
@@ -694,6 +785,30 @@ def generate_dim_products(start_id=1):
     ]
     
     for i, product in enumerate(product_data):
+        # Generate created_date from 2015 to present to match historical data range
+        created_date = fake.date_between_dates(date_start=date(2015, 1, 1), date_end=date.today())
+        
+        # Determine product status based on age
+        # Older products are more likely to be delisted
+        years_since_creation = (date.today() - created_date).days / 365.0
+        
+        # Calculate delisting probability based on age
+        # Products older than 8 years: 40% chance of delisting
+        # Products 5-8 years old: 25% chance of delisting
+        # Products 3-5 years old: 15% chance of delisting
+        # Products less than 3 years old: 5% chance of delisting
+        if years_since_creation > 8:
+            delist_probability = 0.40
+        elif years_since_creation > 5:
+            delist_probability = 0.25
+        elif years_since_creation > 3:
+            delist_probability = 0.15
+        else:
+            delist_probability = 0.05
+        
+        # Determine status
+        status = "Delisted" if random.random() < delist_probability else "Active"
+        
         products.append({
             "product_key": start_id + i,
             "product_id": f"P{start_id + i:03}",
@@ -703,8 +818,8 @@ def generate_dim_products(start_id=1):
             "brand": product["brand"],
             "wholesale_price": product["wholesale"],
             "retail_price": product["retail"],
-            "status": "Active",
-            "created_date": fake.date_between_dates(date_start=date(2020, 1, 1), date_end=date.today())
+            "status": status,
+            "created_date": created_date
         })
     
     return products
@@ -785,6 +900,13 @@ def generate_dim_campaigns(start_id=1):
         {"name": "Summer Campaign 2025", "type": "Seasonal", "start": "2025-06-01", "end": "2025-08-31", "budget": 5500000},
         {"name": "Back to School 2025", "type": "Seasonal", "start": "2025-05-15", "end": "2025-06-30", "budget": 3500000},
         {"name": "Year End Sale 2025", "type": "Seasonal", "start": "2025-11-01", "end": "2025-12-31", "budget": 7000000},
+        
+        # Current year campaigns (2026)
+        {"name": "New Year Promotion 2026", "type": "Holiday", "start": "2026-01-01", "end": "2026-01-31", "budget": 5000000},
+        {"name": "Spring Campaign 2026", "type": "Seasonal", "start": "2026-03-01", "end": "2026-05-31", "budget": 6000000},
+        {"name": "Summer Sale 2026", "type": "Seasonal", "start": "2026-06-01", "end": "2026-08-31", "budget": 6500000},
+        {"name": "Back to School 2026", "type": "Seasonal", "start": "2026-05-15", "end": "2026-06-30", "budget": 4000000},
+        {"name": "Holiday Season 2026", "type": "Holiday", "start": "2026-11-01", "end": "2026-12-31", "budget": 8500000},
     ]
     
     for i, campaign in enumerate(campaign_data):
@@ -880,7 +1002,7 @@ def generate_daily_sales_with_delivery_updates(employees, products, retailers, c
     from datetime import datetime
     
     sales = []
-    sale_key = start_id
+    sale_sequence = 0
     
     if start_date is None:
         start_date = date.today()
@@ -949,8 +1071,11 @@ def generate_daily_sales_with_delivery_updates(employees, products, retailers, c
         expected_delivery = start_date + timedelta(days=random.randint(1, 5))
         actual_delivery = expected_delivery if delivery_status == "Delivered" else None
         
+        sale_sequence += 1
+        # Use current timestamp in milliseconds for additional uniqueness
+        timestamp_ms = int((datetime.now().timestamp() * 1000) % 1000)
         sales.append({
-            "sale_key": sale_key,
+            "sale_key": generate_unique_sale_key(start_date, product["product_key"], employee["employee_key"], retailer["retailer_key"], sale_sequence, timestamp_ms),
             "sale_date": start_date,
             "product_key": product["product_key"],
             "employee_key": employee["employee_key"],
@@ -971,8 +1096,6 @@ def generate_daily_sales_with_delivery_updates(employees, products, retailers, c
             "expected_delivery_date": expected_delivery,
             "actual_delivery_date": actual_delivery,
         })
-        
-        sale_key += 1
     
     print(f"Generated {len(sales)} new daily sales for {start_date}")
     return sales
@@ -980,32 +1103,20 @@ def generate_daily_sales_with_delivery_updates(employees, products, retailers, c
 def generate_fact_sales(employees, products, retailers, campaigns, target_amount, start_date=None, end_date=None, start_id=1):
     """Generate sales fact table with realistic growth over time and robust relationships"""
     sales = []
-    sale_key = start_id
+    sale_sequence = 0
     
     if start_date is None:
         start_date = date.today()
     if end_date is None:
         end_date = start_date
     
-    # Filter active records and create safe lookups for robust relationships
-    active_employees = [e for e in employees if e.get('employment_status') == 'Active']
-    active_products = [p for p in products if p.get('status') == 'Active']
-    
     # Create safe lookup dictionaries to prevent relationship errors
-    employee_lookup = {emp["employee_key"]: emp for emp in active_employees}
-    product_lookup = {prod["product_key"]: prod for prod in active_products}
     retailer_lookup = {ret["retailer_key"]: ret for ret in retailers}
     campaign_lookup = {camp["campaign_key"]: camp for camp in campaigns}
     
     # Validate we have enough records for relationships
-    if not active_employees:
-        raise ValueError("No active employees found for sales generation")
-    if not active_products:
-        raise ValueError("No active products found for sales generation")
     if not retailers:
         raise ValueError("No retailers found for sales generation")
-    
-    print(f"Using {len(active_employees)} employees, {len(active_products)} products, {len(retailers)} retailers, {len(campaigns)} campaigns")
     
     # Calculate total days and create realistic growth pattern
     total_days = (end_date - start_date).days + 1
@@ -1013,7 +1124,7 @@ def generate_fact_sales(employees, products, retailers, campaigns, target_amount
     # Create growth factors for realistic business growth
     # For 10-year period: start small, grow to exceed target
     growth_start = 0.5  # Start at 50% of final daily rate
-    growth_end = 1.3   # End at 130% of target (to exceed ₱6B total)
+    growth_end = 1.3   # End at 130% of target (to exceed ₱40B total)
     
     current_amount = 0
     current_date = start_date
@@ -1022,6 +1133,30 @@ def generate_fact_sales(employees, products, retailers, campaigns, target_amount
     print(f"Growth pattern: {growth_start*100:.0f}% to {growth_end*100:.0f}% over period")
     
     while current_date <= end_date and current_amount < target_amount * 1.4:  # Allow up to 140% of target
+        # Filter employees available on this date (hired before or on current_date, not terminated before current_date)
+        available_employees = [
+            e for e in employees 
+            if e.get('hire_date') <= current_date 
+            and (e.get('employment_status') != 'Terminated' or (e.get('termination_date') and e.get('termination_date') >= current_date))
+        ]
+        
+        # Filter products available on this date (created before or on current_date)
+        # For historical sales, products can be sold if they were created before the sale date
+        # (regardless of current status, since status represents current state, not historical)
+        available_products = [
+            p for p in products 
+            if p.get('created_date') and p.get('created_date') <= current_date
+        ]
+        
+        # If no employees or products available, skip this day (shouldn't happen but safety check)
+        if not available_employees or not available_products:
+            current_date += timedelta(days=1)
+            continue
+        
+        # Create lookup dictionaries for this date
+        employee_lookup = {emp["employee_key"]: emp for emp in available_employees}
+        product_lookup = {prod["product_key"]: prod for prod in available_products}
+        
         # Calculate progress through the period (0.0 to 1.0)
         progress = (current_date - start_date).days / total_days
         
@@ -1042,11 +1177,17 @@ def generate_fact_sales(employees, products, retailers, campaigns, target_amount
             if current_amount >= target_amount * 1.4:  # Stop if we exceed 140% of target
                 break
                 
-            # Random selection
-            employee = random.choice(active_employees)
-            product = random.choice(active_products)
+            # Random selection from available records for this date
+            employee = random.choice(available_employees)
+            product = random.choice(available_products)
             retailer = random.choice(retailers)
-            campaign = random.choice(campaigns) if random.random() < 0.3 else None
+            
+            # Campaign selection - only use campaigns active on current_date
+            active_campaigns = [
+                c for c in campaigns 
+                if c.get('start_date') <= current_date <= c.get('end_date')
+            ]
+            campaign = random.choice(active_campaigns) if active_campaigns and random.random() < 0.3 else None
             
             # Generate sale quantity and calculate amounts
             case_quantity = random.randint(100, 1000)  # Wholesale case quantities (100-1000 units) for ₱15K average sales
@@ -1072,8 +1213,11 @@ def generate_fact_sales(employees, products, retailers, campaigns, target_amount
             expected_delivery = current_date + timedelta(days=random.randint(1, 5))
             actual_delivery = expected_delivery if delivery_status == "Delivered" else None
             
+            sale_sequence += 1
+            # Use current timestamp in milliseconds for additional uniqueness
+            timestamp_ms = int((datetime.now().timestamp() * 1000) % 1000)
             sales.append({
-                "sale_key": sale_key,
+                "sale_key": generate_unique_sale_key(current_date, product["product_key"], employee["employee_key"], retailer["retailer_key"], sale_sequence, timestamp_ms),
                 "sale_date": current_date,
                 "product_key": product["product_key"],
                 "employee_key": employee["employee_key"],
@@ -1096,7 +1240,6 @@ def generate_fact_sales(employees, products, retailers, campaigns, target_amount
             })
             
             current_amount += total_amount
-            sale_key += 1
         
         # Progress reporting
         if len(sales) % 10000 == 0:
@@ -1112,7 +1255,7 @@ def generate_fact_sales(employees, products, retailers, campaigns, target_amount
 def generate_fact_operating_costs(target_amount, start_date=None, end_date=None, start_id=1):
     """Generate operating costs fact table"""
     costs = []
-    cost_key = start_id
+    cost_sequence = 0
     
     if start_date is None:
         start_date = date.today() - timedelta(days=365)
@@ -1145,16 +1288,15 @@ def generate_fact_operating_costs(target_amount, start_date=None, end_date=None,
                 # Generate daily cost for this type with some variation
                 amount = daily_per_type * random.uniform(0.8, 1.2)
                 
+                cost_sequence += 1
                 costs.append({
-                    "cost_key": cost_key,
+                    "cost_key": generate_unique_cost_key(current_date, category, cost_sequence),
                     "cost_date": current_date,
                     "category": category,
                     "cost_type": cost_type,
                     "amount": amount,
                     "currency": "PHP"
                 })
-                
-                cost_key += 1
         
         current_date += timedelta(days=1)
     
@@ -1163,7 +1305,7 @@ def generate_fact_operating_costs(target_amount, start_date=None, end_date=None,
 def generate_fact_marketing_costs(campaigns, target_amount, start_date=None, end_date=None, start_id=1):
     """Generate marketing costs fact table"""
     costs = []
-    cost_key = start_id
+    cost_sequence = 0
     
     if start_date is None:
         start_date = date.today() - timedelta(days=365)
@@ -1185,8 +1327,9 @@ def generate_fact_marketing_costs(campaigns, target_amount, start_date=None, end
         current_date = start_date
         while current_date <= end_date:
             for category in cost_categories:
+                cost_sequence += 1
                 costs.append({
-                    "marketing_cost_key": cost_key,
+                    "marketing_cost_key": generate_unique_marketing_cost_key(None, current_date, category, cost_sequence),
                     "cost_date": current_date,
                     "campaign_key": None,
                     "campaign_id": None,
@@ -1195,7 +1338,6 @@ def generate_fact_marketing_costs(campaigns, target_amount, start_date=None, end
                     "amount": daily_target / len(cost_categories) * random.uniform(0.8, 1.2),
                     "currency": "PHP"
                 })
-                cost_key += 1
             current_date += timedelta(days=1)
     else:
         # Generate costs for each day in the period, distributing across campaigns
@@ -1213,8 +1355,9 @@ def generate_fact_marketing_costs(campaigns, target_amount, start_date=None, end
                 
                 for campaign in active_campaigns:
                     for category in cost_categories:
+                        cost_sequence += 1
                         costs.append({
-                            "marketing_cost_key": cost_key,
+                            "marketing_cost_key": generate_unique_marketing_cost_key(campaign["campaign_key"], current_date, category, cost_sequence),
                             "cost_date": current_date,
                             "campaign_key": campaign["campaign_key"],
                             "campaign_id": campaign["campaign_id"],
@@ -1223,12 +1366,12 @@ def generate_fact_marketing_costs(campaigns, target_amount, start_date=None, end
                             "amount": daily_per_campaign / len(cost_categories) * random.uniform(0.8, 1.2),
                             "currency": "PHP"
                         })
-                        cost_key += 1
             else:
                 # No active campaigns - generate general marketing costs
                 for category in cost_categories:
+                    cost_sequence += 1
                     costs.append({
-                        "marketing_cost_key": cost_key,
+                        "marketing_cost_key": generate_unique_marketing_cost_key(None, current_date, category, cost_sequence),
                         "cost_date": current_date,
                         "campaign_key": None,
                         "campaign_id": None,
@@ -1237,7 +1380,6 @@ def generate_fact_marketing_costs(campaigns, target_amount, start_date=None, end
                         "amount": daily_target / len(cost_categories) * random.uniform(0.8, 1.2),
                         "currency": "PHP"
                     })
-                    cost_key += 1
             
             current_date += timedelta(days=1)
     

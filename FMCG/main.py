@@ -198,36 +198,44 @@ def main():
             # Generate employee facts if employees exist
             if table_has_data(client, DIM_EMPLOYEES):
                 logger.info("Processing employee data...")
-                # Load current employees
-                employees_df = client.query(f"SELECT * FROM `{DIM_EMPLOYEES}` WHERE employment_status = 'Active'").to_dataframe()
-                employees = employees_df.to_dict("records")
+                # Load all employees (active and terminated) for historical wage data
+                employees_df = client.query(f"SELECT * FROM `{DIM_EMPLOYEES}`").to_dataframe()
+                employees_all = employees_df.to_dict("records")
+                
+                # Load active employees for fact table
+                employees_active_df = client.query(f"SELECT * FROM `{DIM_EMPLOYEES}` WHERE employment_status = 'Active'").to_dataframe()
+                employees_active = employees_active_df.to_dict("records")
                 
                 # Load jobs for salary ranges
                 jobs_df = client.query(f"SELECT * FROM `{DIM_JOBS}`").to_dataframe()
                 jobs_data = jobs_df.to_dict("records")
                 
+                # Load departments for wage generation
+                departments_df = client.query(f"SELECT * FROM `{DIM_DEPARTMENTS}`").to_dataframe()
+                departments_data = departments_df.to_dict("records")
+                
                 # Check and regenerate employee facts if needed
                 if not table_has_data(client, FACT_EMPLOYEES):
                     logger.info("Generating employee facts...")
-                    employee_facts = generate_fact_employees(employees, jobs_data)
+                    employee_facts = generate_fact_employees(employees_active, jobs_data)
                     append_df_bq(client, pd.DataFrame(employee_facts), FACT_EMPLOYEES)
                 else:
                     logger.info("Employee facts already exist. Skipping.")
                 
-                # Always regenerate employee wages with corrected calculation
+                # Always regenerate employee wages with historical data
                 wages_table = f"{PROJECT_ID}.{DATASET}.fact_employee_wages"
-                logger.info("Regenerating employee wage history with corrected calculation...")
+                logger.info("Regenerating employee wage history with historical data from 2015 to present...")
                 try:
-                    # Drop existing wages table to fix the inflation issue
+                    # Drop existing wages table to regenerate with historical data
                     client.delete_table(wages_table)
-                    logger.info("Dropped existing wages table to fix inflation issue")
+                    logger.info("Dropped existing wages table to regenerate with historical data")
                 except Exception as e:
                     logger.info(f"Wages table doesn't exist or couldn't drop: {e}")
                 
-                # Generate corrected wage data (current year only)
-                employee_wages = generate_fact_employee_wages(employees, jobs_data)
+                # Generate historical wage data for all employees (active and terminated)
+                employee_wages = generate_fact_employee_wages(employees_all, jobs_data, departments_data, end_date=date.today())
                 append_df_bq(client, pd.DataFrame(employee_wages), wages_table)
-                logger.info(f"Generated {len(employee_wages)} corrected wage records")
+                logger.info(f"Generated {len(employee_wages)} historical wage records")
             else:
                 logger.info("No employees found. Skipping employee data generation.")
         else:
@@ -395,26 +403,14 @@ def main():
                 logger.info(f"  Active products: {len([p for p in products if p['status'] == 'Active']):,}")
                 logger.info(f"  Total retailers: {len(retailers):,}")
             
-            # Get max sale key for continuity (optimized query)
-            try:
-                max_key_result = client.query(f"SELECT COALESCE(MAX(`sale_key`), 0) as max_key FROM `{FACT_SALES}` LIMIT 1").to_dataframe()
-            except Exception as e:
-                if "readsessions.create" in str(e):
-                    logger.warning(f"BigQuery read sessions permission error. Using default start ID...")
-                    max_key_result = pd.DataFrame({"max_key": [None]})
-                else:
-                    raise
-            
-            start_id = 1
-            if not max_key_result.empty and pd.notna(max_key_result['max_key'].iloc[0]):
-                start_id = int(max_key_result['max_key'].iloc[0]) + 1
-            
+            # Note: IDs are now date-based and unique, no need to track max key
+            # The unique ID generation ensures no duplicates even on multiple runs
             sales = generate_daily_sales_with_delivery_updates(
                 employees, products, retailers, campaigns,
                 DAILY_SALES_AMOUNT,
                 start_date=today,
                 end_date=today,
-                start_id=start_id
+                start_id=1  # Not used anymore, but kept for compatibility
             )
         
         append_df_bq_safe(client, pd.DataFrame(sales), FACT_SALES, "sale_key")

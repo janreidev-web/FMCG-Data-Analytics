@@ -293,14 +293,14 @@ Configure the system using environment variables or edit `FMCG/config.py`:
 <tr>
 <td><code>INITIAL_SALES_AMOUNT</code></td>
 <td>Historical sales target (PHP)</td>
-<td><code>60,000,000,000</code></td>
-<td>11-year historical data (₱60B revenue)</td>
+<td><code>40,000,000,000</code></td>
+<td>10-year historical data (₱40B revenue)</td>
 </tr>
 <tr>
 <td><code>DAILY_SALES_AMOUNT</code></td>
 <td>Daily sales target (PHP)</td>
-<td><code>24,660,000</code></td>
-<td>For scheduled runs (₱24.66M daily)</td>
+<td><code>16,440,000</code></td>
+<td>For scheduled runs (₱16.44M daily)</td>
 </tr>
 </tbody>
 </table>
@@ -323,7 +323,7 @@ Additional settings in `config.py`:
 <td><code>INITIAL_EMPLOYEES</code></td>
 <td>Current active employee count</td>
 <td><code>500</code></td>
-<td>Scaled for ₱60B revenue company</td>
+<td>Scaled for ₱40B revenue company</td>
 </tr>
 <tr>
 <td><code>INITIAL_PRODUCTS</code></td>
@@ -453,11 +453,11 @@ GitHub Actions automatically executes daily updates:
 <details>
 <summary><b>fact_sales</b> - Sales Transactions</summary>
 
-- **Historical**: ₱60B across 11 years (2015-2026) (initial run)
-- **Daily**: ₱24.66M per day (scheduled runs)
+- **Historical**: ₱40B across 10 years (2015-present) (initial run)
+- **Daily**: ₱16.44M per day (scheduled runs)
 - Seasonal demand variations
 - Retailer-specific order patterns
-- Optimized for ₱60B FMCG company scale
+- Optimized for ₱40B FMCG company scale
 - 475 active employees driving sales performance
 
 </details>
@@ -467,7 +467,7 @@ GitHub Actions automatically executes daily updates:
 
 - **40 cost categories** (fixed/variable)
 - Realistic employee salary structure for 475 active employees
-- Optimized for ₱60B revenue with healthy profit margins
+- Optimized for ₱40B revenue with healthy profit margins
 - Complete business expenses including payroll, operations, and overhead
 
 </details>
