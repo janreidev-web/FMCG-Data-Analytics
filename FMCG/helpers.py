@@ -42,8 +42,21 @@ def append_df_bq(client, df, table_id, write_disposition="WRITE_APPEND"):
         
         job_config = bigquery.LoadJobConfig(write_disposition=write_disposition, autodetect=True)
         job = client.load_table_from_dataframe(df, table_id, job_config=job_config)
-        job.result()
-        logger.info(f"✓ Loaded {len(df):,} rows → {table_id}")
+        
+        # Add timeout to prevent hanging
+        logger.info(f"Starting BigQuery load job for {table_id}...")
+        try:
+            # Wait for job completion with timeout (5 minutes)
+            job.result(timeout=300)
+            logger.info(f"✓ Loaded {len(df):,} rows → {table_id}")
+        except Exception as timeout_error:
+            if "timeout" in str(timeout_error).lower():
+                logger.error(f"Timeout loading data into {table_id}. Job may still be running...")
+                logger.error(f"Job ID: {job.job_id}")
+                logger.error(f"Check BigQuery console for job status")
+                raise TimeoutError(f"BigQuery load job timed out for {table_id}")
+            else:
+                raise
         
     except Exception as e:
         logger.error(f"Failed to load data into {table_id}: {str(e)}")

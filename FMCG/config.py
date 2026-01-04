@@ -18,9 +18,9 @@ INITIAL_EMPLOYEES = 350  # Optimized for regional FMCG distributor with ₱8B re
 INITIAL_PRODUCTS = 150   # More product variety for realistic FMCG
 INITIAL_RETAILERS = 500  # Wider distribution network
 INITIAL_SALES_AMOUNT = int(os.environ.get("INITIAL_SALES_AMOUNT", "8000000000"))
-# Daily: ₱21.92M daily sales (₱8B/year ÷ 365 days ≈ ₱21.92M/day) - optimized for 15-20% profit margin
-# Note: Daily amount is for ongoing operations, scaled proportionally to initial amount
-DAILY_SALES_AMOUNT = int(os.environ.get("DAILY_SALES_AMOUNT", "2192000"))
+# Daily: Target ~₱2M for scheduled daily runs (realistic daily operations)
+# This is separate from the annual target calculation
+DAILY_SALES_AMOUNT = int(os.environ.get("DAILY_SALES_AMOUNT", "2000000"))  # ₱2M daily target
 NEW_PRODUCTS_PER_RUN = random.randint(1, 5)
 NEW_HIRES_PER_RUN = random.randint(2, 12)
 

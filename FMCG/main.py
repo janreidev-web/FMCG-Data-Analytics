@@ -227,28 +227,38 @@ def main():
                 logger.info("Employees dimension already exists. Skipping.")
             
             if not table_has_data(client, DIM_RETAILERS):
-                logger.info("Generating normalized retailers dimension...")
+                logger.info("🏪 Creating retailers...")
                 retailers = generate_dim_retailers_normalized(
                     num_retailers=INITIAL_RETAILERS, 
                     locations=locations
                 )
+                logger.info(f"Generated {len(retailers)} retailers, starting BigQuery upload...")
                 append_df_bq(client, pd.DataFrame(retailers), DIM_RETAILERS)
+                logger.info("✅ Retailers completed successfully")
             else:
-                logger.info("Retailers dimension already exists. Skipping.")
+                logger.info("✅ Retailers ready")
+                # Load existing retailers for dependency
+                retailers_df = client.query(f"SELECT * FROM `{DIM_RETAILERS}`").to_dataframe()
+                retailers = retailers_df.to_dict("records")
             
             if not table_has_data(client, DIM_CAMPAIGNS):
-                logger.info("Generating campaigns dimension...")
+                logger.info("📢 Creating campaigns...")
                 campaigns = generate_dim_campaigns()
                 append_df_bq(client, pd.DataFrame(campaigns), DIM_CAMPAIGNS)
             else:
-                logger.info("Campaigns dimension already exists. Skipping.")
+                logger.info("✅ Campaigns ready")
+                # Load existing campaigns for dependency
+                campaigns_df = client.query(f"SELECT * FROM `{DIM_CAMPAIGNS}`").to_dataframe()
+                campaigns = campaigns_df.to_dict("records")
             
             if not table_has_data(client, DIM_DATES):
-                logger.info("Generating dates dimension...")
+                logger.info("📅 Creating dates...")
                 dates = generate_dim_dates()
                 append_df_bq(client, pd.DataFrame(dates), DIM_DATES)
             else:
-                logger.info("Dates dimension already exists. Skipping.")
+                logger.info("✅ Dates ready")
+            
+            logger.info("🎉 All dimensions completed successfully!")
             
             # Generate employee facts if employees exist
             if table_has_data(client, DIM_EMPLOYEES):
@@ -427,21 +437,36 @@ def main():
         
         # Always try to generate sales data (bypass table existence check for debugging)
         yesterday = date.today() - timedelta(days=1)
+        
+        # Use different sales targets for scheduled vs manual runs
+        if is_scheduled:
+            # Daily run: generate only yesterday's sales (~₱2M)
+            sales_target = DAILY_SALES_AMOUNT
+            start_date = yesterday
+            end_date = yesterday
+            logger.info(f"📅 Daily run: Generating ₱{sales_target:,.0f} in sales for {yesterday}...")
+        else:
+            # Manual run: generate full historical data (₱8B total)
+            sales_target = INITIAL_SALES_AMOUNT
+            start_date = date(2015, 1, 1)
+            end_date = yesterday
+            logger.info(f"🔧 Manual run: Generating ₱{sales_target:,.0f} in total sales from {start_date} to {yesterday}...")
+        
         logger.info(f"INITIAL_SALES_AMOUNT from config: {INITIAL_SALES_AMOUNT:,}")
-        logger.info(f"Generating initial sales fact targeting ₱{INITIAL_SALES_AMOUNT:,.0f} (2015-01-01 to {yesterday})...")
+        logger.info(f"DAILY_SALES_AMOUNT from config: {DAILY_SALES_AMOUNT:,}")
         
         # Add progress monitoring for large data generation
         sales_start = time.time()
-        logger.info("Starting sales data generation (this may take several minutes)...")
+        logger.info("Starting sales data generation...")
         
         sales = []
         try:
             logger.info("About to call generate_fact_sales...")
             sales = generate_fact_sales(
                 employees, products, retailers, campaigns,
-                INITIAL_SALES_AMOUNT,
-                start_date=date(2015, 1, 1),
-                end_date=yesterday
+                sales_target,
+                start_date=start_date,
+                end_date=end_date
             )
             
             sales_elapsed = time.time() - sales_start
@@ -468,33 +493,44 @@ def main():
             logger.warning("FORCING creation of sample sales data...")
             try:
                 # Create minimal sample sales data
-                sample_date = date(2015, 6, 1)  # Mid-year date when employees/products should be available
+                if is_scheduled:
+                    # Daily run: use yesterday's date
+                    sample_date = yesterday
+                    target_amount = DAILY_SALES_AMOUNT
+                else:
+                    # Manual run: use mid-year date for historical data
+                    sample_date = date(2015, 6, 1)
+                    target_amount = 1000.0  # Small sample amount for manual runs
                 
                 # Get first available employee, product, retailer
                 available_employees = [e for e in employees if e.get('hire_date') and e.get('hire_date') <= sample_date]
                 available_products = [p for p in products if p.get('created_date') and p.get('created_date') <= sample_date]
                 
                 if available_employees and available_products and retailers:
-                    for i in range(min(10, len(available_employees), len(available_products), len(retailers))):
+                    # Calculate amount per sale to reach target
+                    num_sales = min(10, len(available_employees), len(available_products), len(retailers))
+                    amount_per_sale = target_amount / num_sales
+                    
+                    for i in range(num_sales):
                         sample_sale = {
                             "sale_key": 1000000 + i,  # Simple sequential keys
-                            "sale_date": sample_date + timedelta(days=i),
+                            "sale_date": sample_date,
                             "product_key": available_products[i % len(available_products)]["product_key"],
                             "employee_key": available_employees[i % len(available_employees)]["employee_key"],
                             "retailer_key": retailers[i % len(retailers)]["retailer_key"],
                             "campaign_key": campaigns[0]["campaign_key"] if campaigns else None,
                             "case_quantity": 10,
-                            "unit_price": 100.0,
+                            "unit_price": amount_per_sale / 10,  # Base price
                             "discount_percent": 0.05,
                             "tax_rate": 0.12,
-                            "total_amount": 1070.0,  # 10 * 100 * (1 - 0.05) * (1 + 0.12)
-                            "commission_amount": 53.5,  # 5% of total
+                            "total_amount": amount_per_sale,
+                            "commission_amount": amount_per_sale * 0.05,  # 5% commission
                             "currency": "PHP",
                             "payment_method": "Cash",
                             "payment_status": "Paid",
                             "delivery_status": "Delivered",
-                            "expected_delivery_date": sample_date + timedelta(days=i + 1),
-                            "actual_delivery_date": sample_date + timedelta(days=i + 1)
+                            "expected_delivery_date": sample_date + timedelta(days=1),
+                            "actual_delivery_date": sample_date + timedelta(days=1)
                         }
                         sales.append(sample_sale)
                     
