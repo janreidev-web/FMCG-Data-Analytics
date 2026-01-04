@@ -52,6 +52,7 @@ def log_progress(step, total_steps, message, start_time=None):
 
 def is_last_day_of_month():
     """Check if today is the last day of the month"""
+    from datetime import date, timedelta
     today = date.today()
     next_month = today.replace(day=28) + timedelta(days=4)  # This will always get us to the next month
     last_day_of_month = next_month - timedelta(days=next_month.day)
@@ -61,6 +62,9 @@ def main():
     """
     Main entry point for FMCG Data Simulator - Dimensional Model
     """
+    # Ensure datetime imports are available in local scope
+    from datetime import datetime, timedelta, date
+    
     start_time = time.time()
     logger.info(f"{'='*60}")
     logger.info(f"FMCG Data Simulator - Dimensional Model")
@@ -413,7 +417,6 @@ def main():
             logger.warning("FORCING creation of sample sales data...")
             try:
                 # Create minimal sample sales data
-                from datetime import timedelta
                 sample_date = date(2015, 6, 1)  # Mid-year date when employees/products should be available
                 
                 # Get first available employee, product, retailer
