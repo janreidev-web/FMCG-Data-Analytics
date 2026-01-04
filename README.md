@@ -4,10 +4,9 @@
 
 [![Python](https://img.shields.io/badge/Python-3.14-blue.svg)](https://www.python.org/downloads/)
 [![BigQuery](https://img.shields.io/badge/Google%20Cloud-BigQuery-orange.svg)](https://cloud.google.com/bigquery)
-[![Power BI](https://img.shields.io/badge/Power%20BI-Dashboard-yellow.svg)](https://powerbi.microsoft.com/)
 [![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-Automated-brightgreen.svg)](https://github.com/features/actions)
 
-*Normalized Dimensional Modeling • Synthetic Data Generation • Automated ETL • Business Intelligence • Optimized Storage*
+*Normalized Dimensional Modeling • Synthetic Data Generation • Automated ETL • Geographic Intelligence • Optimized Storage*
 
 ---
 
@@ -40,8 +39,7 @@ This platform implements a **complete normalized dimensional data warehouse** fo
 |:--------------:|:--------------:|:------------:|
 | **Data Warehouse** | Google BigQuery | Scalable cloud storage with SQL analytics |
 | **ETL Pipeline** | Python + Pandas | Automated data generation and loading |
-| **Orchestration** | GitHub Actions | Scheduled daily data updates |
-| **Analytics** | Power BI | Business intelligence dashboards |
+| **Orchestration** | GitHub Actions | Scheduled every 2 minutes for testing |
 | **Data Model** | **Normalized Star Schema** | Optimized for query performance & storage |
 
 ### Business Domains Covered
@@ -62,21 +60,21 @@ This platform implements a **complete normalized dimensional data warehouse** fo
 
 ### Data Generation & Modeling
 - **Normalized Star Schema** architecture with reduced redundancy
-- Realistic synthetic data generation
-- **9 Dimension Tables** with optimized relationships
+- Realistic synthetic data generation using Faker library
+- **14 Dimension Tables** with optimized relationships
 - **5 Fact Tables** with comprehensive business metrics
-- **500 Total Employees** (475 active, 25 terminated) across 10 departments
+- **350 Total Employees** across 10 departments
 - **150 Products** across 7 FMCG categories
 - **500 Retailers** across all Philippines regions
 - **Optimized HR data** with 20+ quantitative metrics per employee
 
 ### Automation & Operations
-- **Automated GitHub Actions** workflow
-- Scheduled daily data generation
+- **Automated GitHub Actions** workflow running every 2 minutes
 - Manual and scheduled execution modes
 - **BigQuery auto-scaling** integration
-- Error handling and logging
+- Error handling and comprehensive logging
 - **Storage quota optimization** (~1.28 GB total)
+- **180-minute timeout protection** for scheduled runs
 
 ### Geographic Intelligence
 - **Complete Philippines coverage** (16 regions)
@@ -85,52 +83,43 @@ This platform implements a **complete normalized dimensional data warehouse** fo
 - Location-based sales analytics
 - Realistic delivery time modeling
 
-### Business Intelligence
-- **Power BI ready** data structure
-- Optimized for analytical queries
-- Time-based analytics support
-- Multi-dimensional analysis
-- **Enhanced performance metrics** tracking
+### Data Processing Features
+- **Duplicate prevention** with ID-based filtering
+- **Batch processing** for large datasets
+- **Memory-efficient** operations (<50MB for employee data)
+- **Progress monitoring** with detailed logging
+- **Error recovery** and fallback mechanisms
 
 ---
 
 ## Recent Updates
 
-### Latest Production Release (January 2026)
+### Current Development Status (January 2026)
 
-#### Critical Wage Calculation Fixes
-- **Fixed wage inflation issue** that was causing unrealistic wage-to-revenue ratios
-- **Implemented corrected wage calculation** with proper employment period handling
-- **Optimized salary ranges** to achieve realistic 9.3% wage-to-revenue ratio
-- **Separated active vs terminated employee calculations**:
-  - **Active Employees**: Current annual salary (12 × monthly rate)
-  - **Terminated Employees**: Total wages earned during employment period
-- **Eliminated historical record multiplication** that was causing dashboard inflation
-- **Achieved target wage cost**: ₱576.8M annual vs ₱6.24B revenue
+#### Enhanced Configuration & Scaling
+- **Optimized employee count**: 350 employees for regional FMCG distributor scale
+- **Updated revenue targets**: ₱8B total sales with ₱2M daily generation targets
+- **Flexible configuration**: Environment-based configuration management
+- **Improved resource allocation**: Memory and processing optimizations
 
-#### Enhanced Compensation System
-- **Realistic salary ranges** optimized for FMCG scale:
-  - **Entry Level**: ₱15K-25K / month
-  - **Junior**: ₱25K-40K / month  
-  - **Senior**: ₱40K-70K / month
-  - **Manager**: ₱70K-120K / month
-  - **Director**: ₱120K-200K / month
-- **Single wage record per employee** (eliminates historical multiplication)
-- **Accurate employment period calculations** for terminated employees
-- **Current year focus** for active employee compensation
+#### Advanced Data Generation
+- **Comprehensive dimensional model**: 14 dimension tables with normalized relationships
+- **Enhanced employee analytics**: 20+ quantitative metrics per employee
+- **Geographic intelligence**: Complete Philippines regional coverage
+- **Realistic data patterns**: Using Faker library for authentic data generation
 
-#### Data Structure Optimizations
-- **Streamlined wage generation** with current-year focus
-- **Improved data integrity** with proper employment period handling
-- **Enhanced performance** through simplified calculations
-- **Better financial modeling** with realistic cost structures
+#### Automation & Monitoring
+- **GitHub Actions integration**: Automated workflow with 2-minute testing frequency
+- **Enhanced error handling**: Comprehensive logging and recovery mechanisms
+- **Progress monitoring**: Real-time status updates and performance tracking
+- **Timeout protection**: 180-minute execution limit for scheduled runs
 
-#### Production Readiness Enhancements
-- **Comprehensive testing suite**: 21/21 tests passing (100% success rate)
-- **Error handling**: Robust validation and recovery mechanisms
-- **Memory efficiency**: <50MB for 500 employees with wage data
-- **Scheduled run optimization**: Daily execution with 3-hour timeout protection
-- **Resource monitoring**: Automatic cleanup and performance tracking
+#### Technical Improvements
+- **Duplicate prevention**: ID-based filtering for data integrity
+- **Batch processing**: Efficient handling of large datasets
+- **Memory optimization**: <50MB memory usage for employee operations
+- **Schema validation**: Relationship integrity checks
+- **BigQuery optimization**: Free-tier compatible operations
 
 ---
 
@@ -145,43 +134,32 @@ FMCG-Data-Analytics/
 │   ├── auth.py                     # Google Cloud authentication
 │   ├── helpers.py                  # Utility functions and helpers
 │   ├── geography.py                # Philippines geographic data
-│   ├── schema.py                   # BigQuery table definitions (normalized)
+│   ├── schema.py                   # BigQuery table definitions
+│   ├── id_generation.py           # Unique ID generation utilities
 │   │
 │   ├── generators/                 # Data generation modules
-│   │   └── dimensional.py          # **Normalized dimensional model generators**
-│   │       # Complete generator suite:
-│   │       # - generate_dim_locations()
-│   │       # - generate_dim_departments()
-│   │       # - generate_dim_jobs()
-│   │       # - generate_dim_banks()
-│   │       # - generate_dim_insurance()
-│   │       # - generate_dim_employees_normalized()
-│   │       # - generate_dim_products()
-│   │       # - generate_dim_retailers_normalized()
-│   │       # - generate_dim_campaigns()
-│   │       # - generate_fact_employees() (optimized)
-│   │       # - generate_fact_sales()
-│   │       # - generate_fact_inventory()
-│   │       # - generate_fact_operating_costs()
-│   │       # - generate_fact_marketing_costs()
+│   │   ├── dimensional.py          # Normalized dimensional model generators
+│   │   └── bigquery_updates.py     # BigQuery update operations
 │   │
 │   └── requirements.txt             # Python dependencies
 │
 ├── .github/
 │   └── workflows/                   # GitHub Actions workflows
-│       └── simulator.yml           # Automated daily data generation
+│       └── simulator.yml           # Automated data generation pipeline
 │
 ├── README.md                       # This documentation
-└── [PBIX file - to be added]        # Power BI dashboard file
+└── fmcg_simulator.log              # Application log file
 ```
 
 ### Key Components
 
-- **`main.py`**: Central orchestration script managing the complete ETL pipeline
-- **`generators/dimensional.py`**: **Complete normalized star schema** with optimized fact/dimension tables
-- **`geography.py`**: Complete Philippines geographic database with 16 regions
-- **`schema.py`**: **Normalized BigQuery schema definitions** with 9 dimensions + 5 facts
-- **`.github/workflows/simulator.yml`**: Automated daily data generation pipeline
+- **`main.py`**: Central orchestration script managing the complete ETL pipeline with 770 lines of comprehensive logic
+- **`generators/dimensional.py`**: Complete normalized star schema with 1,526 lines of data generation logic
+- **`geography.py`**: Complete Philippines geographic database with 16 regions and 154 lines of regional data
+- **`schema.py`**: Normalized BigQuery schema definitions
+- **`.github/workflows/simulator.yml`**: Automated every-2-minute data generation pipeline
+- **`helpers.py`**: 332 lines of utility functions for data processing and BigQuery operations
+- **`id_generation.py`**: Unique ID generation utilities for data integrity
 
 ---
 
@@ -220,6 +198,14 @@ cd FMCG
 pip install -r requirements.txt
 ```
 
+**Dependencies include:**
+- `pandas` - Data manipulation and analysis
+- `faker` - Realistic synthetic data generation
+- `google-cloud-bigquery` - BigQuery client library
+- `google-cloud-bigquery-storage` - BigQuery storage client
+- `pyarrow` - Columnar data format support
+- `pandas_gbq` - Pandas BigQuery integration
+
 ### Step 3: Google Cloud Authentication
 
 <details>
@@ -229,8 +215,8 @@ pip install -r requirements.txt
 export GCP_SERVICE_ACCOUNT="<base64-encoded-service-account-json>"
 export GCP_PROJECT_ID="your-project-id"
 export BQ_DATASET="fmcg_analytics"
-export INITIAL_SALES_AMOUNT="60000000000"
-export DAILY_SALES_AMOUNT="24660000"
+export INITIAL_SALES_AMOUNT="8000000000"
+export DAILY_SALES_AMOUNT="2000000"
 ```
 
 **Base64 Encoding Service Account:**
@@ -293,14 +279,14 @@ Configure the system using environment variables or edit `FMCG/config.py`:
 <tr>
 <td><code>INITIAL_SALES_AMOUNT</code></td>
 <td>Historical sales target (PHP)</td>
-<td><code>40,000,000,000</code></td>
-<td>10-year historical data (₱40B revenue)</td>
+<td><code>8,000,000,000</code></td>
+<td>10-year historical data (₱8B revenue)</td>
 </tr>
 <tr>
 <td><code>DAILY_SALES_AMOUNT</code></td>
 <td>Daily sales target (PHP)</td>
-<td><code>16,440,000</code></td>
-<td>For scheduled runs (₱16.44M daily)</td>
+<td><code>2,000,000</code></td>
+<td>For scheduled runs (₱2M daily)</td>
 </tr>
 </tbody>
 </table>
@@ -322,8 +308,8 @@ Additional settings in `config.py`:
 <tr>
 <td><code>INITIAL_EMPLOYEES</code></td>
 <td>Current active employee count</td>
-<td><code>500</code></td>
-<td>Scaled for ₱40B revenue company</td>
+<td><code>350</code></td>
+<td>Scaled for ₱8B revenue company</td>
 </tr>
 <tr>
 <td><code>INITIAL_PRODUCTS</code></td>
@@ -374,19 +360,20 @@ python main.py
 | **Step** | **Action** | **Output** |
 |:--------:|:----------:|:----------:|
 | **1** | Authenticate with Google Cloud | Secure connection |
-| **2** | Generate dimension tables | 9 dimension tables |
+| **2** | Generate dimension tables | 14 dimension tables |
 | **3** | Generate historical fact tables | 5 fact tables (2015-today) |
 | **4** | Load data into BigQuery | ~1.28 GB storage |
 | **5** | Display summary statistics | Record counts and metrics |
 
 #### Automated Scheduled Runs
 
-GitHub Actions automatically executes daily updates:
+GitHub Actions automatically executes updates:
 
-- **Frequency**: Daily at 12:00 AM PHT (UTC+8)
+- **Frequency**: Every 2 minutes (testing) / Daily (production)
 - **Scope**: Incremental sales data only
 - **Features**: Delivery status updates, continuity preservation
 - **Logging**: Comprehensive execution logs
+- **Timeout**: 180-minute execution limit
 
 ### Data Generation Process
 
@@ -405,16 +392,15 @@ GitHub Actions automatically executes daily updates:
 <details>
 <summary><b>dim_employees</b> - Employee Master Data</summary>
 
-- **900 total employees** (250 active, 650 terminated) across 10 departments
-- **47 comprehensive fields** including demographics, performance, benefits, and analytics
+- **350 total employees** across 10 departments
+- **Comprehensive fields** including demographics, performance, benefits, and analytics
 - Realistic organizational hierarchy with department-specific distributions
-- Position-based salary structure (₱15K-150K monthly range)
+- Position-based salary structure
 - Complete Philippine government IDs (TIN, SSS, PhilHealth, Pag-IBIG)
 - Work setup modeling (On-site, Remote, Hybrid, Field-based)
 - Performance ratings, training records, and skills tracking
 - Attendance, engagement, and satisfaction metrics
 - Leave balances and overtime tracking
-- 11-year historical growth patterns with realistic turnover
 
 **Key Employee Data Categories:**
 - **Demographics**: Name, gender, birth date, age, blood type
@@ -453,12 +439,12 @@ GitHub Actions automatically executes daily updates:
 <details>
 <summary><b>fact_sales</b> - Sales Transactions</summary>
 
-- **Historical**: ₱40B across 10 years (2015-present) (initial run)
-- **Daily**: ₱16.44M per day (scheduled runs)
+- **Historical**: ₱8B across 10 years (2015-present) (initial run)
+- **Daily**: ₱2M per day (scheduled runs)
 - Seasonal demand variations
 - Retailer-specific order patterns
-- Optimized for ₱40B FMCG company scale
-- 475 active employees driving sales performance
+- Optimized for ₱8B FMCG company scale
+- 350 active employees driving sales performance
 
 </details>
 
@@ -466,8 +452,8 @@ GitHub Actions automatically executes daily updates:
 <summary><b>fact_operating_costs</b> - Operating Expenses</summary>
 
 - **40 cost categories** (fixed/variable)
-- Realistic employee salary structure for 475 active employees
-- Optimized for ₱40B revenue with healthy profit margins
+- Realistic employee salary structure for 350 active employees
+- Optimized for ₱8B revenue with healthy profit margins
 - Complete business expenses including payroll, operations, and overhead
 
 </details>
@@ -550,10 +536,16 @@ The platform implements a **normalized dimensional modeling** approach with opti
 - **`dim_banks`**: Banking information for payroll
 - **`dim_insurance`**: Health and life insurance providers
 
-#### Business Dimensions
+#### Product Dimensions
+- **`dim_categories`**: Product categories (7 FMCG categories)
+- **`dim_brands`**: Brand information
+- **`dim_subcategories`**: Product subcategories
 - **`dim_products`**: Product catalog with pricing and categories
+
+#### Business Dimensions
 - **`dim_retailers`**: Retail network with geographic distribution
 - **`dim_campaigns`**: Marketing campaigns with budgets and timelines
+- **`dim_dates`**: Date dimension for time-based analysis
 
 ### Optimized Fact Tables
 
@@ -667,140 +659,9 @@ The platform includes **comprehensive geographic coverage** of all 16 administra
 
 ---
 
-## Power BI Integration
-
-### Business Intelligence Ready
-
-The **normalized dimensional data warehouse** structure is **optimized for Power BI** and other BI tools with enhanced analytics capabilities:
-
-<div align="center">
-
-| **Analytics Domain** | **Key Metrics Available** | **Business Value** |
-|:-------------------:|:-------------------------:|:-----------------:|
-| **Sales Performance** | Revenue, Volume, Growth, Profitability | Revenue optimization & forecasting |
-| **Product Analytics** | Category performance, Price elasticity, Product lifecycle | Product mix optimization |
-| **Geographic Analysis** | Regional sales, Market penetration, Delivery performance | Market expansion planning |
-| **Employee Analytics** | **20+ HR metrics** including compensation, performance, engagement, retention | **Complete workforce optimization** |
-| **Marketing ROI** | Campaign effectiveness, Cost per acquisition, Brand impact | Marketing budget optimization |
-| **Financial Analysis** | Cost structure, Profit margins, Operating efficiency | Financial planning & control |
-| **Inventory Management** | Stock levels, Turnover rates, Warehouse efficiency | Supply chain optimization |
-
-</div>
-
-### Enhanced Dashboard Capabilities
-
-#### Executive Dashboard
-- **Key Performance Indicators** (KPIs) at a glance
-- **Revenue trends** and growth metrics
-- **Regional performance** comparison
-- **Profitability analysis** by product category
-- **Workforce analytics** with employee metrics
-
-#### Operational Dashboard
-- **Daily sales tracking** and variance analysis
-- **Inventory levels** and stock alerts
-- **Delivery performance** metrics
-- **Employee productivity** monitoring
-- **Attendance and engagement** tracking
-
-#### HR Analytics Dashboard (NEW)
-- **Compensation analysis** across departments and roles
-- **Performance management** with promotion tracking
-- **Employee engagement** and satisfaction metrics
-- **Retention risk** analysis and intervention planning
-- **Training effectiveness** and skill gap analysis
-- **Benefits utilization** and cost optimization
-
-#### Marketing Dashboard
-- **Campaign performance** tracking
-- **Marketing ROI** analysis
-- **Customer acquisition** costs
-- **Brand performance** metrics
-
-### Data Connection Setup
-
-1. **Connect to BigQuery**:
-   - Use the BigQuery connector in Power BI
-   - Authenticate with your Google Cloud credentials
-   - Select the `fmcg_analytics` dataset
-
-2. **Build Relationships**:
-   - Import all 9 dimension and 5 fact tables
-   - Configure relationships based on foreign keys
-   - Set proper cardinality (many-to-one)
-
-3. **Create Measures**:
-   - Build DAX measures for key metrics
-   - Implement time intelligence functions
-   - Create calculated columns for business logic
-
-### Sample Power BI Queries
-
-```sql
--- Monthly Sales Trend
-SELECT 
-    FORMAT_DATE('%Y-%m', sale_date) as month_year,
-    SUM(total_amount) as total_revenue,
-    COUNT(DISTINCT sale_key) as transaction_count,
-    AVG(commission_amount) as avg_commission
-FROM fact_sales
-GROUP BY FORMAT_DATE('%Y-%m', sale_date)
-ORDER BY month_year;
-
--- Regional Performance
-SELECT 
-    l.region,
-    l.province,
-    SUM(s.total_amount) as total_revenue,
-    COUNT(DISTINCT r.retailer_key) as retailer_count,
-    COUNT(DISTINCT s.employee_key) as employee_count
-FROM fact_sales s
-JOIN dim_retailers r ON s.retailer_key = r.retailer_key
-JOIN dim_locations l ON r.location_key = l.location_key
-GROUP BY l.region, l.province
-ORDER BY total_revenue DESC;
-
--- Enhanced Employee Analytics (NEW)
-SELECT 
-    d.department_name,
-    j.job_level,
-    AVG(fe.monthly_salary) as avg_salary,
-    AVG(fe.performance_rating) as avg_performance,
-    AVG(fe.engagement_score) as avg_engagement,
-    AVG(fe.satisfaction_index) as avg_satisfaction,
-    COUNT(*) as employee_count,
-    SUM(CASE WHEN fe.promotion_eligible = TRUE THEN 1 ELSE 0 END) as promotion_eligible_count
-FROM fact_employees fe
-JOIN dim_employees e ON fe.employee_key = e.employee_key
-JOIN dim_jobs j ON e.job_key = j.job_key
-JOIN dim_departments d ON j.department_key = d.department_key
-WHERE e.employment_status = 'Active'
-GROUP BY d.department_name, j.job_level
-ORDER BY avg_salary DESC;
-
--- Training and Development Analytics (NEW)
-SELECT 
-    d.department_name,
-    AVG(fe.training_hours_completed) as avg_training_hours,
-    AVG(fe.certifications_count) as avg_certifications,
-    AVG(CAST(fe.skill_gap_score AS FLOAT)) as avg_skill_gap,
-    COUNT(*) as employee_count
-FROM fact_employees fe
-JOIN dim_employees e ON fe.employee_key = e.employee_key
-JOIN dim_jobs j ON e.job_key = j.job_key
-JOIN dim_departments d ON j.department_key = d.department_key
-WHERE e.employment_status = 'Active'
-GROUP BY d.department_name
-ORDER BY avg_training_hours DESC;
-```
-
----
-
 ## Security & Best Practices
 
 ### Security Guidelines
-
-<div align="center">
 
 | **Security Aspect** | **Best Practice** | **Implementation** |
 |:------------------:|:-----------------:|:-----------------:|
@@ -808,8 +669,6 @@ ORDER BY avg_training_hours DESC;
 | **Access Control** | Principle of least privilege | BigQuery role-based permissions |
 | **Data Protection** | Encrypt sensitive data at rest | BigQuery default encryption |
 | **Audit Trail** | Monitor data access and changes | BigQuery audit logs |
-
-</div>
 
 ### Recommended Security Practices
 
@@ -826,292 +685,102 @@ gcloud projects add-iam-policy-binding your-project-id \
   --role="roles/bigquery.dataEditor"
 ```
 
-#### 2. GitHub Repository Security
-- **Repository Secrets**: Store all sensitive data in GitHub secrets
-- **Branch Protection**: Enable branch protection rules for main branch
-- **Audit Logs**: Monitor GitHub Actions execution logs
-- **Access Control**: Limit repository access to authorized personnel
+#### 2. Environment Variable Security
+- Use base64 encoding for service account keys in GitHub Actions
+- Rotate credentials regularly
+- Monitor access logs for unusual activity
 
-#### 3. Data Privacy Considerations
-- **Synthetic Data Only**: All generated data is fictional and does not represent real entities
-- **No PII**: No personally identifiable information is generated or stored
-- **Compliance**: Designed to comply with data protection regulations
-
-### Monitoring & Alerting
-
-#### BigQuery Monitoring
-```sql
--- Monitor storage usage
-SELECT 
-  dataset_id,
-  table_id,
-  size_bytes / (1024*1024) as size_mb,
-  row_count
-FROM `your-project-id.fmcg_analytics.INFORMATION_SCHEMA.TABLES`
-ORDER BY size_bytes DESC;
-
--- Monitor query performance
-SELECT 
-  job_id,
-  creation_time,
-  total_bytes_processed / (1024*1024*1024) as gb_processed,
-  total_slot_ms
-FROM `region-us`.INFORMATION_SCHEMA.JOBS
-WHERE creation_time > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 24 HOUR)
-ORDER BY total_bytes_processed DESC;
-```
+#### 3. Data Privacy
+- Synthetic data generation eliminates real PII concerns
+- Follow data protection regulations for any real data integration
+- Implement data retention policies
 
 ---
 
 ## Dependencies
 
-### Core Python Packages
+### Python Packages
 
-<table>
-<thead>
-<tr>
-<th>Package</th>
-<th>Version</th>
-<th>Purpose</th>
-<th>Usage in Project</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>pandas</code></td>
-<td>Latest</td>
-<td>Data manipulation and analysis</td>
-<td>DataFrame operations, data transformation</td>
-</tr>
-<tr>
-<td><code>faker</code></td>
-<td>Latest</td>
-<td>Synthetic data generation</td>
-<td>Realistic names, addresses, business data</td>
-</tr>
-<tr>
-<td><code>google-cloud-bigquery</code></td>
-<td>Latest</td>
-<td>BigQuery client library</td>
-<td>Cloud data warehouse operations</td>
-</tr>
-<tr>
-<td><code>pyarrow</code></td>
-<td>Latest</td>
-<td>Data serialization</td>
-<td>BigQuery data format optimization</td>
-</tr>
-<tr>
-<td><code>pandas_gbq</code></td>
-<td>Latest</td>
-<td>Pandas-BigQuery integration</td>
-<td>Efficient data loading operations</td>
-</tr>
-</tbody>
-</table>
+| **Package** | **Version** | **Purpose** |
+|:-----------:|:-----------:|:-----------:|
+| `pandas` | Latest | Data manipulation and analysis |
+| `faker` | Latest | Realistic synthetic data generation |
+| `google-cloud-bigquery` | Latest | BigQuery client library |
+| `google-cloud-bigquery-storage` | Latest | BigQuery storage client |
+| `pyarrow` | Latest | Columnar data format support |
+| `pandas_gbq` | Latest | Pandas BigQuery integration |
 
-### Infrastructure Dependencies
+### System Requirements
 
-<div align="center">
-
-| **Service** | **Purpose** | **Required Plan** |
-|:-----------:|:-----------:|:----------------:|
-| **Google Cloud Platform** | Cloud infrastructure | Free tier or paid |
-| **BigQuery** | Data warehouse | Free tier (10GB storage) |
-| **GitHub Actions** | Workflow automation | Free tier (2000 minutes/month) |
-| **Power BI** | Business intelligence | Free or Pro license |
-
-</div>
-
-### Installation Requirements
-
-```bash
-# Install Python dependencies
-pip install pandas faker google-cloud-bigquery pyarrow pandas_gbq
-
-# Verify installation
-python -c "import pandas, faker, google.cloud.bigquery, pyarrow, pandas_gbq; print('All dependencies installed successfully')"
-```
+- **Python**: 3.7 or higher (tested with 3.14)
+- **Memory**: Minimum 4GB RAM (8GB recommended)
+- **Storage**: 2GB free space for logs and temporary files
+- **Network**: Stable internet connection for BigQuery access
 
 ---
-
-## Performance & Scaling
-
-### Storage Optimization
-
-The platform is **optimized for BigQuery free tier** usage:
-
-<div align="center">
-
-| **Metric** | **Current Usage** | **Free Tier Limit** | **Utilization** |
-|:----------:|:----------------:|:------------------:|:---------------:|
-| **Storage** | ~1.3 GB | 10 GB | 13% |
-| **Monthly Queries** | Variable | 1 TB | Variable |
-| **Data Insertion** | ~3.6M records/day | 5 GB/day | 72% |
-
-</div>
-
-### Performance Characteristics
-
-#### Data Generation Performance
-- **Initial Load**: 11 years of historical data (~₱6B sales)
-- **Daily Updates**: ₱1.64M PHP sales per day
-- **Generation Speed**: ~10,000 records/second
-- **BigQuery Loading**: Optimized batch operations
-
-#### Query Performance
-```sql
--- Sample query performance metrics
--- Monthly aggregation (10 years of data): ~2-3 seconds
--- Regional analysis: ~1-2 seconds  
--- Product performance: ~1-2 seconds
--- Complex joins with filters: ~3-5 seconds
-```
-
-### Scaling Considerations
-
-#### Horizontal Scaling
-- **BigQuery Auto-scaling**: Automatic query parallelization
-- **Partitioned Tables**: Date-partitioned fact tables
-- **Clustered Tables**: Optimized for common query patterns
-
-#### Future Growth Path
-1. **Increase Data Volume**: Adjust `INITIAL_SALES_AMOUNT` and `DAILY_SALES_AMOUNT`
-2. **Add More Dimensions**: Expand product catalog, employee base
-3. **Geographic Expansion**: Add more regions or countries
-4. **Real-time Integration**: Stream processing capabilities
 
 ## Troubleshooting
 
-### Common Issues & Solutions
+### Common Issues
 
-#### Authentication Issues
+#### BigQuery Connection Errors
 ```bash
-# Error: Permission Denied
-# Solution: Verify service account permissions
-gcloud projects add-iam-policy-binding your-project-id \
-  --member="serviceAccount:your-service-account@project.iam.gserviceaccount.com" \
-  --role="roles/bigquery.dataEditor"
+# Verify service account permissions
+gcloud auth activate-service-account --key-file=path/to/key.json
+gcloud bigquery tables list --project=your-project-id
 ```
 
 #### Memory Issues
-```bash
-# Error: Memory limit exceeded during data generation
-# Solution: Reduce batch size in config.py
-INITIAL_SALES_AMOUNT = "3000000000"  # Reduce from 6B
-DAILY_SALES_AMOUNT = "820000"      # Reduce from 1.64M
-```
+- Reduce batch sizes in `config.py`
+- Increase system RAM or use cloud-based execution
+- Monitor memory usage with system tools
 
 #### GitHub Actions Failures
-```bash
-# Error: Workflow timeout
-# Solution: Check GitHub Actions logs and adjust timeout
-# In .github/workflows/simulator.yml
-timeout-minutes: 60  # Increase if needed
-```
+- Check repository secrets configuration
+- Verify service account base64 encoding
+- Review workflow logs for specific error messages
 
-#### BigQuery Quota Issues
-```sql
--- Check current usage
-SELECT 
-  project_id,
-  user_email,
-  total_bytes_processed,
-  total_slot_ms
-FROM `region-us`.INFORMATION_SCHEMA.JOBS_BY_USER`
-WHERE creation_time > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 24 HOUR);
-```
+### Performance Optimization
 
-## Contributing & Development
+#### For Large Datasets
+- Use batch processing for data uploads
+- Implement parallel processing where possible
+- Monitor BigQuery quota usage
+- Optimize query performance with proper indexing
+
+#### For Scheduled Runs
+- Adjust execution frequency based on needs
+- Monitor timeout limits
+- Implement error recovery mechanisms
+- Use progress tracking for long-running operations
+
+---
+
+## Contributing
 
 ### Development Guidelines
 
-#### Code Standards
-- **Python 3.14** compatibility
-- **Type hints** for all functions
-- **Docstrings** following Google style
-- **Error handling** with proper logging
-- **Unit tests** for core functionality
+1. **Code Style**: Follow PEP 8 Python style guidelines
+2. **Testing**: Test changes with sample data before production
+3. **Documentation**: Update README for new features
+4. **Security**: Never commit credentials or sensitive data
 
-#### Project Structure Best Practices
-```
-FMCG/
-├── generators/          # Data generation modules
-│   ├── dimensional.py   # Core dimensional model
-│   └── [domain].py      # Domain-specific generators
-├── config.py            # Configuration management
-├── auth.py              # Authentication handling
-├── helpers.py           # Utility functions
-├── schema.py            # BigQuery schema definitions
-└── main.py              # Main orchestration script
-```
+### Adding New Features
 
-### Contributing Workflow
-
-1. **Fork the repository**
-2. **Create feature branch**: `git checkout -b feature/new-feature`
-3. **Make changes** following code standards
-4. **Test locally**: `python main.py` (with test dataset)
-5. **Submit pull request** with detailed description
-
-### Enhancement Opportunities
-
-#### Potential Features
-- **Real-time Data Streaming**: Kafka/PubSub integration
-- **Advanced Analytics**: Machine learning models
-- **Additional Dimensions**: Customer, Supplier, Warehouse
-- **Multi-country Support**: Expand geographic coverage
-- **API Endpoints**: RESTful API for data access
-- **Data Quality**: Automated validation and monitoring
-
-#### Performance Optimizations
-- **Incremental Loading**: Change Data Capture (CDC)
-- **Materialized Views**: Pre-aggregated summary tables
-- **Query Optimization**: Partitioning and clustering strategies
-- **Caching Layer**: Redis or similar for frequent queries
+1. Create feature branch from main
+2. Implement changes with proper error handling
+3. Test with manual and scheduled execution
+4. Update documentation
+5. Submit pull request with detailed description
 
 ---
 
-## License & Disclaimer
+## License
 
-### Project Information
-
-<div align="center">
-
-**FMCG Data Analytics Platform**
-
-*A comprehensive dimensional data warehouse solution for FMCG business analytics*
-
-| **Aspect** | **Details** |
-|:----------:|:-----------|
-| **Purpose** | Educational and demonstration |
-| **Data Type** | Synthetic/fictional data only |
-| **Technology Stack** | Python, BigQuery, Power BI |
-| **Geographic Focus** | Philippines FMCG market |
-| **Data Volume** | Optimized for free-tier usage |
-
-</div>
-
-### Important Disclaimers
-
-- **Synthetic Data Only**: All generated data is fictional and does not represent real business entities, transactions, or individuals
-- **Educational Purpose**: This platform is designed for educational, demonstration, and testing purposes only
-- **No Real Business Data**: No connection to actual FMCG companies, retailers, or employees
-- **Privacy Compliance**: All data generation complies with privacy regulations as no real personal information is created or stored
-
-### Support & Community
-
-- **Issues**: Report bugs or feature requests via GitHub Issues
-- **Discussions**: Use GitHub Discussions for questions and ideas
-- **Documentation**: Comprehensive documentation in this README file
-- **Examples**: Sample queries and configurations provided throughout
+This project is provided as-is for educational and development purposes. Please ensure compliance with Google Cloud terms of service and applicable data protection regulations when using this platform.
 
 ---
 
-<div align="center">
-
-**Built with modern data engineering best practices for scalable FMCG analytics**
-
-*Last Updated: January 3, 2026 - Normalized Schema Implementation*
-
-</div>
+**Last Updated**: January 2026  
+**Version**: 2.0  
+**Status**: Production Ready
