@@ -16,7 +16,7 @@ from config import (
     DIM_EMPLOYEES, DIM_PRODUCTS, DIM_RETAILERS, DIM_CAMPAIGNS,
     DIM_LOCATIONS, DIM_DEPARTMENTS, DIM_JOBS, DIM_BANKS, DIM_INSURANCE,
     FACT_SALES, FACT_OPERATING_COSTS, FACT_INVENTORY, FACT_MARKETING_COSTS, FACT_EMPLOYEES,
-    INITIAL_SALES_AMOUNT
+    INITIAL_SALES_AMOUNT, DAILY_SALES_AMOUNT
 )
 from auth import get_bigquery_client
 from helpers import table_has_data, append_df_bq, append_df_bq_safe, update_delivery_status
